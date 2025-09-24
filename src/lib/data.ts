@@ -1,4 +1,3 @@
-
 import type { Ride } from './types';
 import { Timestamp } from 'firebase/firestore';
 
@@ -280,6 +279,12 @@ export const seedableSubscriptions = [
     { id: 'SUB02', ownerId: 'O002', ownerName: 'City Movers Ltd.', plan: 'Yearly', status: 'Active', startDate: Timestamp.fromDate(now), expiryDate: Timestamp.fromDate(new Date(now.getFullYear() + 1, now.getMonth(), now.getDate())) },
     { id: 'SUB03', ownerId: 'O005', ownerName: 'Chioma Nwosu', plan: 'Weekly', status: 'Active', startDate: Timestamp.fromDate(now), expiryDate: Timestamp.fromDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7)) },
     { id: 'SUB04', ownerId: 'O003', ownerName: 'Prestige Rides', plan: 'Yearly', status: 'Expired', startDate: Timestamp.fromDate(new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())), expiryDate: Timestamp.fromDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)) },
+];
+
+export const seedableReports = [
+  { id: 'REP01', listingId: 'L001', reason: 'Incorrect Info', reporterName: 'Jane Doe', reporterEmail: 'jane@example.com', notes: 'The price is wrong.', status: 'Pending', dateReported: Timestamp.now() },
+  { id: 'REP02', listingId: 'L002', reason: 'Spam', reporterEmail: 'test@test.com', notes: 'This looks like a fake listing.', status: 'Reviewed', dateReported: Timestamp.now() },
+  { id: 'REP03', listingId: 'L005', reason: 'Inappropriate', reporterName: 'John Smith', notes: '', status: 'Resolved', dateReported: Timestamp.now() },
 ];
 
 
