@@ -269,8 +269,8 @@ export default function ReportsPage() {
                     {selectedReport && (
                         <div className="grid gap-6 py-4">
                            <div className="grid grid-cols-2 gap-4">
-                                <p><strong>Listing ID:</strong> <Link href={`/admin/listings/edit/${selectedReport.listingId}`} className="text-primary hover:underline">{selectedReport.listingId}</Link></p>
-                                <p><strong>Status:</strong> <Badge variant={getStatusVariant(selectedReport.status)}>{selectedReport.status}</Badge></p>
+                                <div><strong>Listing ID:</strong> <Link href={`/admin/listings/edit/${selectedReport.listingId}`} className="text-primary hover:underline">{selectedReport.listingId}</Link></div>
+                                <div><strong>Status:</strong> <Badge variant={getStatusVariant(selectedReport.status)}>{selectedReport.status}</Badge></div>
                                 <p><strong>Reported On:</strong> {formatDate(selectedReport.dateReported)}</p>
                                 <p><strong>Reason:</strong> {selectedReport.reason}</p>
                            </div>
@@ -330,6 +330,8 @@ export default function ReportsPage() {
         </div>
     );
 }
+
+    
 
     
 
