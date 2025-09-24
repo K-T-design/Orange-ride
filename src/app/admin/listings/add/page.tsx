@@ -102,6 +102,7 @@ export default function AddListingPage() {
         // If an owner is selected, check their subscription limit
         if (values.ownerId) {
             const ownerId = values.ownerId;
+            const selectedOwner = rideOwners.find(o => o.id === ownerId);
 
             // 1. Find the owner's subscription
             const subQuery = query(collection(db, 'subscriptions'), where('ownerId', '==', ownerId));
@@ -150,11 +151,20 @@ export default function AddListingPage() {
 
                 // 3. Enforce the limit
                 if (currentListingsCount >= limit) {
+                    const errorMsg = `This owner has reached the maximum of ${limit} listings for their ${plan} plan. Please upgrade their plan to add more.`;
                     toast({
                         variant: 'destructive',
                         title: 'Listing Limit Reached',
-                        description: `This owner has reached the maximum of ${limit} listings for their ${plan} plan. Please upgrade their plan to add more.`,
+                        description: errorMsg,
                     });
+                    
+                    // Create a notification for the admin
+                    await addDoc(collection(db, 'notifications'), {
+                        message: `Listing limit reached for ${selectedOwner?.name} on ${plan} plan.`,
+                        createdAt: serverTimestamp(),
+                        type: 'alert'
+                    });
+
                     setIsSubmitting(false);
                     return;
                 }
@@ -467,5 +477,7 @@ export default function AddListingPage() {
     </div>
   );
 }
+
+    
 
     
