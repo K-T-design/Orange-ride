@@ -8,7 +8,6 @@ import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
@@ -296,7 +295,7 @@ export function ListingForm({ onSubmit, isSubmitting, initialData, submitButtonT
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select an owner to assign this listing to" />
-                                                </Trigger>
+                                                </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
                                                 {mockRideOwners.map(owner => (
