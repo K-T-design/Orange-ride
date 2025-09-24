@@ -16,12 +16,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { NIGERIAN_CITIES } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
 import { ArrowLeft, Car, Upload, X } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
 const vehicleTypes = ['Car', 'Bus', 'Keke', 'Bike', 'VIP'];
+
+const planLimits = {
+  'Weekly': 9,
+  'Monthly': 50,
+  'Yearly': Infinity,
+};
 
 const formSchema = z.object({
   name: z.string().min(3, 'Vehicle name must be at least 3 characters.'),
@@ -33,6 +39,7 @@ const formSchema = z.object({
   schedule: z.string().min(3, 'Please enter an availability schedule.'),
   capacity: z.coerce.number().min(1, 'Capacity must be at least 1.'),
   modelYear: z.string().min(4, 'Please enter a valid year.'),
+  ownerId: z.string().optional(), // To associate with a ride owner
   companyName: z.string().optional(),
   description: z.string().optional(),
   altContact: z.string().optional(),
@@ -40,6 +47,17 @@ const formSchema = z.object({
 });
 
 type FormData = z.infer<typeof formSchema>;
+
+// Mock ride owners for selection
+// In a real app, this would be fetched from Firestore
+const rideOwners = [
+    { id: 'O001', name: 'John Adebayo' },
+    { id: 'O002', name: 'City Movers Ltd.' },
+    { id: 'O003', name: 'Prestige Rides' },
+    { id: 'O004', name: 'Bayo Adekunle' },
+    { id: 'O005', name: 'Chioma Nwosu' },
+];
+
 
 export default function AddListingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,9 +99,52 @@ export default function AddListingPage() {
   async function onSubmit(values: FormData) {
     setIsSubmitting(true);
     try {
+        // If an owner is selected, check their subscription limit
+        if (values.ownerId) {
+            const ownerId = values.ownerId;
+
+            // 1. Find the owner's subscription
+            const subQuery = query(collection(db, 'subscriptions'), where('ownerId', '==', ownerId), where('status', '==', 'Active'));
+            const subSnapshot = await getDocs(subQuery);
+
+            if (subSnapshot.empty) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Action Blocked',
+                    description: 'This owner does not have an active subscription. Cannot add listing.',
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
+            const subscription = subSnapshot.docs[0].data();
+            const plan = subscription.plan as keyof typeof planLimits;
+            const limit = planLimits[plan];
+
+            if (limit !== Infinity) {
+                // 2. Count owner's current listings
+                const listingsQuery = query(collection(db, 'listings'), where('ownerId', '==', ownerId));
+                const listingsSnapshot = await getDocs(listingsQuery);
+                const currentListingsCount = listingsSnapshot.size;
+
+                // 3. Enforce the limit
+                if (currentListingsCount >= limit) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Listing Limit Reached',
+                        description: `This owner has reached the maximum of ${limit} listings for their ${plan} plan. Please upgrade their plan to add more.`,
+                    });
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+        }
+
+
       // NOTE: In a real app, you'd upload the image to Firebase Storage first
       // and get the download URL. For this demo, we are skipping the upload.
       // const imageUrl = await uploadImage(values.image);
+      const selectedOwner = rideOwners.find(o => o.id === values.ownerId);
 
       await addDoc(collection(db, 'listings'), {
         name: values.name,
@@ -91,7 +152,8 @@ export default function AddListingPage() {
         pickup: values.location, // Assuming location is the pickup point
         destination: '', // Admin-added listings might not have a fixed destination
         price: values.price,
-        owner: values.companyName || 'Admin', // Use company name or 'Admin'
+        owner: selectedOwner?.name || values.companyName || 'Admin',
+        ownerId: values.ownerId || null,
         model: `${values.name} ${values.modelYear}`,
         contact: {
             phone: values.phone,
@@ -101,7 +163,6 @@ export default function AddListingPage() {
         capacity: values.capacity,
         description: values.description,
         altContact: values.altContact,
-        // image: imageUrl, // Use the URL from storage
         image: 'sedan-1', // Placeholder
         isPromoted: false,
         status: 'Approved', // Admin-added listings are pre-approved
@@ -337,12 +398,34 @@ export default function AddListingPage() {
                                 />
                                  <FormField
                                     control={form.control}
+                                    name="ownerId"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Assign to Owner (Optional)</FormLabel>
+                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select an owner to assign this listing to" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {rideOwners.map(owner => (
+                                                        <SelectItem key={owner.id} value={owner.id}>{owner.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormDescription>If assigned, this listing will count against their subscription limit.</FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                 <FormField
+                                    control={form.control}
                                     name="companyName"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Company Name (Optional)</FormLabel>
+                                            <FormLabel>Company Name (if no owner is assigned)</FormLabel>
                                             <FormControl><Input placeholder="e.g., Admin Rides Co." {...field} /></FormControl>
-                                            <FormDescription>If this vehicle belongs to a company.</FormDescription>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -364,3 +447,5 @@ export default function AddListingPage() {
   );
 }
 
+
+    
