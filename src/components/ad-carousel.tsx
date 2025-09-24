@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -29,13 +29,22 @@ export function AdCarousel() {
   useEffect(() => {
     const q = query(
         collection(db, 'advertisements'), 
-        where('isActive', '==', true),
-        orderBy('priority', 'desc'),
-        orderBy('createdAt', 'desc')
+        where('isActive', '==', true)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const adsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Ad));
-      setAds(adsData);
+      
+      // Sort on the client side to avoid needing a composite index
+      const sortedAds = adsData.sort((a, b) => {
+        const priorityA = a.priority || 0;
+        const priorityB = b.priority || 0;
+        if (priorityA !== priorityB) {
+            return priorityB - priorityA;
+        }
+        return b.createdAt.toMillis() - a.createdAt.toMillis();
+      });
+
+      setAds(sortedAds);
       setIsLoading(false);
     }, (error) => {
         console.error("Error fetching ads: ", error);
@@ -79,8 +88,7 @@ export function AdCarousel() {
                   src={ad.imageUrl}
                   alt={ad.description}
                   fill
-                  className="object-cover transition-opacity opacity-0 duration-500"
-                  onLoadingComplete={(image) => image.classList.remove('opacity-0')}
+                  className="object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                 <div className="absolute bottom-0 left-0 p-6 text-white">
