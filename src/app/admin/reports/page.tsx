@@ -2,19 +2,29 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, doc, updateDoc, serverTimestamp, query, where, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, arrayUnion, serverTimestamp, query, where, getDoc, DocumentData } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, Flag, AlertTriangle, CheckCircle, Trash2, UserX } from "lucide-react";
+import { MoreHorizontal, Flag, AlertTriangle, CheckCircle, Trash2, UserX, MessageSquare, Send } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { format } from 'date-fns';
-import { DocumentData } from "firebase/firestore";
+import { format, formatDistanceToNow } from 'date-fns';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+
+type Note = {
+  author: string;
+  message: string;
+  createdAt: any;
+}
 
 type Report = {
   id: string;
@@ -22,7 +32,7 @@ type Report = {
   reason: string;
   reporterName?: string;
   reporterEmail?: string;
-  notes?: string;
+  notes?: Note[];
   status: 'Pending' | 'Reviewed' | 'Resolved';
   dateReported: any;
 };
@@ -45,6 +55,10 @@ export default function ReportsPage() {
     const [reports, setReports] = useState<Report[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState<'All' | 'Pending' | 'Reviewed' | 'Resolved'>('All');
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+    const [newNote, setNewNote] = useState('');
+
     const { toast } = useToast();
 
     useEffect(() => {
@@ -60,10 +74,14 @@ export default function ReportsPage() {
             const reportsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Report));
             setReports(reportsData);
             setIsLoading(false);
+        }, (error) => {
+            console.error("Error fetching reports:", error);
+            setIsLoading(false);
+            toast({ variant: 'destructive', title: "Failed to load reports." });
         });
 
         return () => unsubscribe();
-    }, [filter]);
+    }, [filter, toast]);
 
     const handleUpdateStatus = async (reportId: string, newStatus: 'Reviewed' | 'Resolved') => {
         const reportRef = doc(db, 'reports', reportId);
@@ -87,7 +105,6 @@ export default function ReportsPage() {
 
     const handleSuspendOwner = async (listingId: string) => {
         try {
-            // 1. Get the listing to find the owner
             const listingRef = doc(db, 'listings', listingId);
             const listingSnap = await getDoc(listingRef);
 
@@ -104,19 +121,46 @@ export default function ReportsPage() {
                 return;
             }
 
-            // 2. Update the owner's status
             const ownerRef = doc(db, 'rideOwners', ownerId);
             await updateDoc(ownerRef, { status: 'Suspended' });
 
-            toast({
-                title: 'Owner Suspended',
-                description: `The owner has been successfully suspended.`,
-            });
-            
+            toast({ title: 'Owner Suspended', description: `The owner has been successfully suspended.` });
         } catch (error) {
             console.error("Error suspending owner: ", error);
             toast({ variant: 'destructive', title: 'Failed to Suspend Owner' });
         }
+    };
+
+    const handleAddNote = async () => {
+        if (!selectedReport || !newNote.trim()) {
+            toast({ variant: 'destructive', title: 'Note cannot be empty.' });
+            return;
+        }
+
+        const reportRef = doc(db, 'reports', selectedReport.id);
+        const noteToAdd = {
+            author: "Admin", // In a real app, this would be the current user's name
+            message: newNote,
+            createdAt: serverTimestamp(),
+        };
+        
+        try {
+            await updateDoc(reportRef, {
+                notes: arrayUnion(noteToAdd)
+            });
+            toast({ title: "Note added." });
+            setNewNote('');
+            // Manually update the state to show the new note instantly
+            setSelectedReport(prev => prev ? ({...prev, notes: [...(prev.notes || []), {...noteToAdd, createdAt: new Date()}]}) : null);
+        } catch (error) {
+            console.error("Error adding note:", error);
+            toast({ variant: 'destructive', title: "Failed to add note." });
+        }
+    };
+
+    const openDetails = (report: Report) => {
+        setSelectedReport(report);
+        setIsDetailOpen(true);
     };
 
     return (
@@ -127,8 +171,8 @@ export default function ReportsPage() {
                         <CardTitle>Reports & Moderation</CardTitle>
                          <div className="flex items-center gap-4">
                             <Button variant={filter === 'All' ? 'default' : 'outline'} onClick={() => setFilter('All')}>All</Button>
-                            <Button variant={filter === 'Pending' ? 'default' : 'outline'} onClick={() => setFilter('Pending')}>Pending</Button>
-                            <Button variant={filter === 'Reviewed' ? 'default' : 'outline'} onClick={() => setFilter('Reviewed')}>Reviewed</Button>
+                            <Button variant={filter === 'Pending' ? 'destructive' : 'outline'} onClick={() => setFilter('Pending')}>Pending</Button>
+                            <Button variant={filter === 'Reviewed' ? 'secondary' : 'outline'} onClick={() => setFilter('Reviewed')}>Reviewed</Button>
                             <Button variant={filter === 'Resolved' ? 'default' : 'outline'} onClick={() => setFilter('Resolved')}>Resolved</Button>
                         </div>
                     </div>
@@ -162,11 +206,11 @@ export default function ReportsPage() {
                         </TableHeader>
                         <TableBody>
                             {reports.map((report) => (
-                                <TableRow key={report.id}>
+                                <TableRow key={report.id} onClick={() => openDetails(report)} className="cursor-pointer">
                                     <TableCell className="font-medium">
-                                        <Button variant="link" asChild className="p-0 h-auto">
+                                        <Button variant="link" asChild className="p-0 h-auto" onClick={(e) => e.stopPropagation()}>
                                              <Link href={`/admin/listings/edit/${report.listingId}`} target="_blank">
-                                                {report.listingId}
+                                                {report.listingId.substring(0, 8)}...
                                             </Link>
                                         </Button>
                                     </TableCell>
@@ -176,7 +220,7 @@ export default function ReportsPage() {
                                     <TableCell>
                                         <Badge variant={getStatusVariant(report.status)}>{report.status}</Badge>
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell onClick={(e) => e.stopPropagation()}>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button aria-haspopup="true" size="icon" variant="ghost">
@@ -185,6 +229,8 @@ export default function ReportsPage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onSelect={() => openDetails(report)}>View Details & Notes</DropdownMenuItem>
+                                                <DropdownMenuSeparator />
                                                 <DropdownMenuItem onSelect={() => handleUpdateStatus(report.id, 'Reviewed')} disabled={report.status === 'Reviewed' || report.status === 'Resolved'}>
                                                     <CheckCircle className="mr-2"/> Mark as Reviewed
                                                 </DropdownMenuItem>
@@ -211,7 +257,78 @@ export default function ReportsPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Report Details</DialogTitle>
+                        <DialogDescription>
+                            Review the report details and take necessary actions.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {selectedReport && (
+                        <div className="grid gap-6 py-4">
+                           <div className="grid grid-cols-2 gap-4">
+                                <p><strong>Listing ID:</strong> <Link href={`/admin/listings/edit/${selectedReport.listingId}`} className="text-primary hover:underline">{selectedReport.listingId}</Link></p>
+                                <p><strong>Status:</strong> <Badge variant={getStatusVariant(selectedReport.status)}>{selectedReport.status}</Badge></p>
+                                <p><strong>Reported On:</strong> {formatDate(selectedReport.dateReported)}</p>
+                                <p><strong>Reason:</strong> {selectedReport.reason}</p>
+                           </div>
+                           <div>
+                             <h4 className="font-semibold mb-2">Reporter Information</h4>
+                             <div className="text-sm p-4 bg-muted rounded-md">
+                                <p><strong>Name:</strong> {selectedReport.reporterName || 'N/A'}</p>
+                                <p><strong>Email:</strong> {selectedReport.reporterEmail || 'N/A'}</p>
+                             </div>
+                           </div>
+
+                           <div className="space-y-4">
+                               <h4 className="font-semibold">Internal Notes</h4>
+                               <div className="space-y-3 max-h-48 overflow-y-auto pr-4">
+                                   {selectedReport.notes && selectedReport.notes.length > 0 ? (
+                                       selectedReport.notes.map((note, index) => (
+                                           <div key={index} className="flex gap-3">
+                                                <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                                                    {note.author.substring(0,1)}
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-semibold">{note.author}</span>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {note.createdAt?.toDate ? formatDistanceToNow(note.createdAt.toDate(), { addSuffix: true }) : 'sending...'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm">{note.message}</p>
+                                                </div>
+                                           </div>
+                                       ))
+                                   ) : (
+                                       <p className="text-sm text-muted-foreground">No notes added yet.</p>
+                                   )}
+                               </div>
+                                <div className="flex gap-2">
+                                    <Textarea 
+                                        placeholder="Add a new note..." 
+                                        value={newNote} 
+                                        onChange={(e) => setNewNote(e.target.value)}
+                                        rows={2}
+                                    />
+                                    <Button onClick={handleAddNote} size="icon" className="flex-shrink-0">
+                                        <Send className="h-4 w-4" />
+                                        <span className="sr-only">Add Note</span>
+                                    </Button>
+                               </div>
+                           </div>
+
+                        </div>
+                    )}
+                     <DialogClose asChild>
+                        <Button type="button" variant="outline">Close</Button>
+                    </DialogClose>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
+
     
