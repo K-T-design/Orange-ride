@@ -356,7 +356,7 @@ export default function SettingsPage() {
                         <DialogTitle>{currentLocation ? 'Edit' : 'Add'} Location</DialogTitle>
                         <DialogDescription>
                            {currentLocation ? 'Update the details for this location.' : 'Add a new Nigerian city or town.'}
-                        </dialogDescription>
+                        </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSaveLocation} className="space-y-4">
                         <div className="space-y-2">
@@ -377,3 +377,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
