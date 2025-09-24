@@ -2,15 +2,17 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, Car } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Car, CheckCircle, Star, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 type Listing = {
     id: string;
@@ -18,7 +20,7 @@ type Listing = {
     model: string;
     price: number;
     owner: string;
-    status: string;
+    status: 'Pending' | 'Approved' | 'Promoted' | 'Expired';
 }
 
 const getStatusVariant = (status: string) => {
@@ -34,6 +36,7 @@ const getStatusVariant = (status: string) => {
 export default function ManageListingsPage() {
     const [listings, setListings] = useState<Listing[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const { toast } = useToast();
 
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, "listings"), (snapshot) => {
@@ -44,6 +47,42 @@ export default function ManageListingsPage() {
 
         return () => unsubscribe();
     }, []);
+
+    const handleUpdateStatus = async (listingId: string, newStatus: 'Approved' | 'Promoted') => {
+        const listingRef = doc(db, 'listings', listingId);
+        try {
+            await updateDoc(listingRef, { status: newStatus });
+            toast({
+                title: "Status Updated",
+                description: `Listing has been successfully ${newStatus === 'Approved' ? 'approved' : 'promoted'}.`,
+            });
+        } catch (error) {
+            console.error("Error updating status:", error);
+            toast({
+                variant: "destructive",
+                title: "Update Failed",
+                description: "Could not update listing status. Please try again.",
+            });
+        }
+    };
+
+    const handleDeleteListing = async (listingId: string) => {
+        const listingRef = doc(db, 'listings', listingId);
+        try {
+            await deleteDoc(listingRef);
+            toast({
+                title: "Listing Deleted",
+                description: "The listing has been successfully deleted.",
+            });
+        } catch (error) {
+            console.error("Error deleting listing:", error);
+            toast({
+                variant: "destructive",
+                title: "Deletion Failed",
+                description: "Could not delete the listing. Please try again.",
+            });
+        }
+    };
 
     return (
         <div className="flex flex-col gap-8">
@@ -97,20 +136,47 @@ export default function ManageListingsPage() {
                                         <Badge variant={getStatusVariant(listing.status)}>{listing.status}</Badge>
                                     </TableCell>
                                     <TableCell>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button aria-haspopup="true" size="icon" variant="ghost">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                    <span className="sr-only">Toggle menu</span>
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem>Approve</DropdownMenuItem>
-                                                <DropdownMenuItem>Promote</DropdownMenuItem>
-                                                <DropdownMenuItem>Edit</DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        <AlertDialog>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button aria-haspopup="true" size="icon" variant="ghost">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                        <span className="sr-only">Toggle menu</span>
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onSelect={() => handleUpdateStatus(listing.id, 'Approved')} disabled={listing.status === 'Approved' || listing.status === 'Promoted'}>
+                                                        <CheckCircle /> Approve
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => handleUpdateStatus(listing.id, 'Promoted')} disabled={listing.status === 'Promoted'}>
+                                                        <Star /> Promote
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem>
+                                                        Edit
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <AlertDialogTrigger asChild>
+                                                        <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                                            <Trash2 /> Delete
+                                                        </DropdownMenuItem>
+                                                    </AlertDialogTrigger>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        This action cannot be undone. This will permanently delete this vehicle listing.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDeleteListing(listing.id)} className="bg-destructive hover:bg-destructive/90">
+                                                        Yes, delete listing
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
                                     </TableCell>
                                 </TableRow>
                             ))}
