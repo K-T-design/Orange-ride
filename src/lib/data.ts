@@ -258,5 +258,13 @@ export const seedableLocations = [
     { id: 'LOC05', name: 'Ibadan', state: 'Oyo'},
 ];
 
+const now = new Date();
+export const seedableSubscriptions = [
+    { id: 'SUB01', ownerId: 'O001', ownerName: 'John Adebayo', plan: 'Monthly', status: 'Active', startDate: Timestamp.fromDate(now), expiryDate: Timestamp.fromDate(new Date(now.getFullYear(), now.getMonth() + 1, now.getDate())) },
+    { id: 'SUB02', ownerId: 'O002', ownerName: 'City Movers Ltd.', plan: 'Yearly', status: 'Active', startDate: Timestamp.fromDate(now), expiryDate: Timestamp.fromDate(new Date(now.getFullYear() + 1, now.getMonth(), now.getDate())) },
+    { id: 'SUB03', ownerId: 'O005', ownerName: 'Chioma Nwosu', plan: 'Weekly', status: 'Active', startDate: Timestamp.fromDate(now), expiryDate: Timestamp.fromDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7)) },
+    { id: 'SUB04', ownerId: 'O003', ownerName: 'Prestige Rides', plan: 'Yearly', status: 'Expired', startDate: Timestamp.fromDate(new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())), expiryDate: Timestamp.fromDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)) },
+];
+
 
 export { NIGERIAN_CITIES };
