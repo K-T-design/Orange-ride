@@ -1,23 +1,72 @@
+
+'use client';
+
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Trash2 } from "lucide-react";
+import { PlusCircle, Trash2, Database } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { db } from "@/lib/firebase";
+import { writeBatch, doc, collection } from "firebase/firestore";
+import { seedableOwners, seedableListings } from "@/lib/data";
 
 const rideCategories = ['Bike', 'Keke', 'Car', 'Bus', 'VIP'];
 const locations = ['Lagos', 'Abuja', 'Port Harcourt', 'Kano', 'Ibadan'];
 
 
 export default function SettingsPage() {
+    const { toast } = useToast();
+    const [isSeeding, setIsSeeding] = useState(false);
+
+    const handleSeedDatabase = async () => {
+        setIsSeeding(true);
+        try {
+            const batch = writeBatch(db);
+
+            const ownersCollection = collection(db, 'rideOwners');
+            seedableOwners.forEach(owner => {
+                const docRef = doc(ownersCollection, owner.id);
+                batch.set(docRef, owner);
+            });
+
+            const listingsCollection = collection(db, 'listings');
+            seedableListings.forEach(listing => {
+                const docRef = doc(listingsCollection, listing.id);
+                batch.set(docRef, listing);
+            });
+
+            await batch.commit();
+
+            toast({
+                title: "Database Seeded",
+                description: "Your Firestore database has been populated with sample data.",
+            });
+
+        } catch (error) {
+             console.error("Error seeding database:", error);
+             toast({
+                variant: "destructive",
+                title: "Seeding Failed",
+                description: "Could not seed the database. Check the console for errors.",
+            });
+        } finally {
+            setIsSeeding(false);
+        }
+    }
+
+
     return (
         <div className="flex flex-col gap-8">
             <h1 className="text-3xl font-bold font-headline">Settings</h1>
 
             <Tabs defaultValue="categories">
-                <TabsList>
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="categories">Categories</TabsTrigger>
                     <TabsTrigger value="locations">Locations</TabsTrigger>
+                    <TabsTrigger value="data">Data</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="categories">
@@ -74,6 +123,27 @@ export default function SettingsPage() {
                                         </Button>
                                     </div>
                                 ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                 <TabsContent value="data">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Database Management</CardTitle>
+                            <CardDescription>Use sample data to populate your database for testing.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-center justify-between p-4 rounded-md border border-destructive/50">
+                                <div>
+                                    <h4 className="font-semibold">Seed Database</h4>
+                                    <p className="text-sm text-muted-foreground">Populate Firestore with initial sample data for owners and listings. This is a one-time action.</p>
+                                </div>
+                                <Button variant="destructive" onClick={handleSeedDatabase} disabled={isSeeding}>
+                                    <Database className="mr-2 h-4 w-4" />
+                                    {isSeeding ? 'Seeding...' : 'Seed Data'}
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>

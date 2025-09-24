@@ -1,3 +1,4 @@
+
 import type { Ride } from './types';
 
 const NIGERIAN_CITIES = [
@@ -216,5 +217,22 @@ export const RIDES: Ride[] = [
     schedule: 'Daily, 6am-10pm'
   }
 ];
+
+export const seedableOwners = [
+  { id: 'O001', name: 'John Adebayo', contact: '2348012345678', plan: 'Monthly', status: 'Active' },
+  { id: 'O002', name: 'City Movers Ltd.', contact: 'contact@citymovers.com', plan: 'Yearly', status: 'Active' },
+  { id: 'O003', name: 'Prestige Rides', contact: 'bookings@prestigerides.ng', plan: 'Yearly', status: 'Suspended' },
+  { id: 'O004', name: 'Bayo Adekunle', contact: 'bayo@example.com', plan: 'None', status: 'Pending Approval' },
+  { id: 'O005', name: 'Chioma Nwosu', contact: '2348056789012', plan: 'Weekly', status: 'Active' },
+];
+
+export const seedableListings = [
+  { id: 'L001', type: 'Car', model: 'Toyota Camry', price: 15000, owner: 'John Adebayo', status: 'Approved' },
+  { id: 'L002', type: 'VIP', model: 'Mercedes-Benz E-Class', price: 45000, owner: 'Prestige Rides', status: 'Promoted' },
+  { id: 'L003', type: 'Bus', model: 'Ford Transit', price: 5000, owner: 'Go-Together', status: 'Pending' },
+  { id: 'L004', type: 'Keke', model: 'Bajaj RE', price: 2000, owner: 'Chioma Nwosu', status: 'Approved' },
+  { id: 'L005', type: 'Bike', model: 'Gokada Bike', price: 1500, owner: 'Safe Journey Ltd.', status: 'Expired' },
+];
+
 
 export { NIGERIAN_CITIES };
