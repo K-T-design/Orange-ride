@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, doc, updateDoc, Timestamp, addDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, Timestamp, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ type Owner = {
 
 type Listing = {
   id: string;
-  ownerId: string; // Assuming listings have an ownerId
+  ownerId: string;
 }
 
 type Subscription = {
@@ -69,6 +69,23 @@ export default function ManageSubscriptionsPage() {
 
     const { toast } = useToast();
 
+    // This function creates a notification in Firestore
+    const createNotification = async (message: string, eventType: string, ownerName?: string, plan?: string) => {
+        try {
+            await addDoc(collection(db, 'notifications'), {
+                message,
+                ownerName: ownerName || 'System',
+                plan: plan || 'N/A',
+                eventType,
+                createdAt: serverTimestamp(),
+                read: false
+            });
+        } catch (error) {
+            console.error("Failed to create notification:", error);
+        }
+    };
+
+
     useEffect(() => {
         const unsubOwners = onSnapshot(collection(db, "rideOwners"), (snapshot) => {
             setOwners(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Owner)));
@@ -79,26 +96,35 @@ export default function ManageSubscriptionsPage() {
             setListings(listingsData);
         });
 
-        const unsubSubscriptions = onSnapshot(collection(db, "subscriptions"), (snapshot) => {
-            const subsData = snapshot.docs.map(doc => {
+        const unsubSubscriptions = onSnapshot(query(collection(db, "subscriptions")), async (snapshot) => {
+            const subsDataPromises = snapshot.docs.map(async (doc) => {
                 const data = doc.data();
-                // Don't auto-expire if it's suspended
+                
+                // Don't auto-update status if it's manually suspended
                 if (data.status === 'Suspended') {
                     return { id: doc.id, ...data } as Subscription;
                 }
                 
                 const now = Timestamp.now();
-                let status: 'Active' | 'Expired' = 'Active';
+                let status = data.status;
 
-                if (data.expiryDate && data.expiryDate < now) {
+                // Check for expiry if it's currently active
+                if (data.status === 'Active' && data.expiryDate && data.expiryDate < now) {
                     status = 'Expired';
-                    if (data.status !== 'Expired') {
-                        updateDoc(doc.ref, { status: 'Expired' });
-                    }
+                    // Update status in Firestore and create notification
+                    await updateDoc(doc.ref, { status: 'Expired' });
+                    await createNotification(
+                        `Subscription for ${data.ownerName} has expired.`,
+                        'subscription_expired',
+                        data.ownerName,
+                        data.plan
+                    );
                 }
                 
                 return { id: doc.id, ...data, status } as Subscription;
             });
+            
+            const subsData = await Promise.all(subsDataPromises);
             setSubscriptions(subsData);
             setIsLoading(false);
         });
@@ -115,20 +141,23 @@ export default function ManageSubscriptionsPage() {
         setIsDialogOpen(true);
     };
 
-    const handleUpdateStatus = async (subId: string, newStatus: 'Suspended' | 'Reactivated') => {
-        const subRef = doc(db, 'subscriptions', subId);
+    const handleUpdateStatus = async (sub: Subscription, newStatus: 'Suspended' | 'Reactivated') => {
+        const subRef = doc(db, 'subscriptions', sub.id);
         try {
             if (newStatus === 'Suspended') {
                 await updateDoc(subRef, { status: 'Suspended' });
-                 toast({ title: "Subscription Suspended" });
+                await createNotification(
+                    `Subscription for ${sub.ownerName} has been suspended.`,
+                    'subscription_suspended',
+                    sub.ownerName,
+                    sub.plan
+                );
+                toast({ title: "Subscription Suspended" });
             } else { // Reactivating
-                const sub = subscriptions.find(s => s.id === subId);
-                if (sub) {
-                    const isExpired = sub.expiryDate.toDate() < new Date();
-                    const finalStatus = isExpired ? 'Expired' : 'Active';
-                    await updateDoc(subRef, { status: finalStatus });
-                    toast({ title: "Subscription Reactivated", description: `Status set to ${finalStatus}.` });
-                }
+                const isExpired = sub.expiryDate.toDate() < new Date();
+                const finalStatus = isExpired ? 'Expired' : 'Active';
+                await updateDoc(subRef, { status: finalStatus });
+                toast({ title: "Subscription Reactivated", description: `Status set to ${finalStatus}.` });
             }
         } catch (error) {
             console.error("Error updating subscription status:", error);
@@ -193,23 +222,21 @@ export default function ManageSubscriptionsPage() {
 
     return (
         <div className="flex flex-col gap-8">
-            <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold font-headline">Manage Subscriptions</h1>
-                <Button onClick={() => handleOpenDialog()}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Assign Subscription
-                </Button>
-            </div>
-
             <Card>
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle>Owner Subscriptions</CardTitle>
-                        <div className="flex gap-2">
-                           <Button variant={filter === 'All' ? 'default' : 'outline'} onClick={() => setFilter('All')}>All</Button>
-                           <Button variant={filter === 'Active' ? 'default' : 'outline'} onClick={() => setFilter('Active')}>Active</Button>
-                           <Button variant={filter === 'Suspended' ? 'default' : 'outline'} onClick={() => setFilter('Suspended')}>Suspended</Button>
-                           <Button variant={filter === 'Expired' ? 'default' : 'outline'} onClick={() => setFilter('Expired')}>Expired</Button>
+                        <div className="flex items-center gap-4">
+                            <div className="flex gap-2">
+                               <Button variant={filter === 'All' ? 'default' : 'outline'} onClick={() => setFilter('All')}>All</Button>
+                               <Button variant={filter === 'Active' ? 'default' : 'outline'} onClick={() => setFilter('Active')}>Active</Button>
+                               <Button variant={filter === 'Suspended' ? 'default' : 'outline'} onClick={() => setFilter('Suspended')}>Suspended</Button>
+                               <Button variant={filter === 'Expired' ? 'default' : 'outline'} onClick={() => setFilter('Expired')}>Expired</Button>
+                            </div>
+                            <Button onClick={() => handleOpenDialog()}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Assign Plan
+                            </Button>
                         </div>
                     </div>
                 </CardHeader>
@@ -263,13 +290,13 @@ export default function ManageSubscriptionsPage() {
                                                     <DropdownMenuItem onSelect={() => handleOpenDialog(sub)}>Edit Plan</DropdownMenuItem>
                                                 )}
                                                 {sub.status === 'Active' && (
-                                                    <DropdownMenuItem onSelect={() => handleUpdateStatus(sub.id, 'Suspended')}>
+                                                    <DropdownMenuItem onSelect={() => handleUpdateStatus(sub, 'Suspended')}>
                                                         <Ban className="mr-2 h-4 w-4" />
                                                         Suspend
                                                     </DropdownMenuItem>
                                                 )}
                                                 {sub.status === 'Suspended' && (
-                                                    <DropdownMenuItem onSelect={() => handleUpdateStatus(sub.id, 'Reactivated')}>
+                                                    <DropdownMenuItem onSelect={() => handleUpdateStatus(sub, 'Reactivated')}>
                                                         <CheckCircle className="mr-2 h-4 w-4" />
                                                         Reactivate
                                                     </DropdownMenuItem>

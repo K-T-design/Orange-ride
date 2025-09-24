@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Car, UserCheck, Bell } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDistanceToNow } from 'date-fns';
 
 type Stat = {
   title: string;
@@ -17,8 +18,9 @@ type Stat = {
 type Notification = {
   id: string;
   message: string;
-  time: string;
   createdAt: Timestamp;
+  read: boolean;
+  type: 'alert' | 'info' | 'warning';
 }
 
 export default function AdminDashboard() {
@@ -69,28 +71,12 @@ export default function AdminDashboard() {
 
   const formatTimeAgo = (timestamp: Timestamp | undefined) => {
       if (!timestamp) return 'Just now';
-      const now = new Date();
-      const past = timestamp.toDate();
-      const seconds = Math.floor((now.getTime() - past.getTime()) / 1000);
-
-      let interval = seconds / 31536000;
-      if (interval > 1) return Math.floor(interval) + "y ago";
-      interval = seconds / 2592000;
-      if (interval > 1) return Math.floor(interval) + "mo ago";
-      interval = seconds / 86400;
-      if (interval > 1) return Math.floor(interval) + "d ago";
-      interval = seconds / 3600;
-      if (interval > 1) return Math.floor(interval) + "h ago";
-      interval = seconds / 60;
-      if (interval > 1) return Math.floor(interval) + "m ago";
-      return Math.floor(seconds) + "s ago";
+      return `${formatDistanceToNow(timestamp.toDate())} ago`;
   };
 
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-3xl font-bold font-headline">Admin Dashboard</h1>
-
       <div className="grid gap-4 md:grid-cols-3">
         {stats.map((stat) => (
           <Card key={stat.title}>
@@ -110,7 +96,7 @@ export default function AdminDashboard() {
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold mb-4 font-headline">Notifications</h2>
+        <h2 className="text-2xl font-bold mb-4 font-headline">Recent Activity</h2>
         <Card>
           <CardContent className="p-0">
              {isLoading ? (
@@ -122,7 +108,7 @@ export default function AdminDashboard() {
             ) : notifications.length === 0 ? (
                  <div className="text-center py-12">
                     <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-medium">No new notifications</h3>
+                    <h3 className="mt-4 text-lg font-medium">No new activity</h3>
                     <p className="mt-1 text-sm text-muted-foreground">
                         Updates and alerts will appear here.
                     </p>

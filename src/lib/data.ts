@@ -228,18 +228,18 @@ export const seedableOwners = [
 ];
 
 export const seedableListings = [
-  { id: 'L001', type: 'Car', model: 'Toyota Camry', price: 15000, owner: 'John Adebayo', status: 'Approved' },
-  { id: 'L002', type: 'VIP', model: 'Mercedes-Benz E-Class', price: 45000, owner: 'Prestige Rides', status: 'Promoted' },
-  { id: 'L003', type: 'Bus', model: 'Ford Transit', price: 5000, owner: 'Go-Together', status: 'Pending' },
-  { id: 'L004', type: 'Keke', model: 'Bajaj RE', price: 2000, owner: 'Chioma Nwosu', status: 'Approved' },
-  { id: 'L005', type: 'Bike', model: 'Gokada Bike', price: 1500, owner: 'Safe Journey Ltd.', status: 'Expired' },
+  { id: 'L001', type: 'Car', model: 'Toyota Camry', price: 15000, owner: 'John Adebayo', ownerId: 'O001', status: 'Approved' },
+  { id: 'L002', type: 'VIP', model: 'Mercedes-Benz E-Class', price: 45000, owner: 'Prestige Rides', ownerId: 'O003', status: 'Promoted' },
+  { id: 'L003', type: 'Bus', model: 'Ford Transit', price: 5000, owner: 'Go-Together', ownerId: 'O002', status: 'Pending' },
+  { id: 'L004', type: 'Keke', model: 'Bajaj RE', price: 2000, owner: 'Chioma Nwosu', ownerId: 'O005', status: 'Approved' },
+  { id: 'L005', type: 'Bike', model: 'Gokada Bike', price: 1500, owner: 'Safe Journey Ltd.', ownerId: 'O002', status: 'Expired' },
 ];
 
 export const seedableNotifications = [
-    { id: 'N001', message: "New subscription payment: ₦10,000 (Weekly)", createdAt: Timestamp.now() },
-    { id: 'N002', message: "New ride owner 'Bayo Adekunle' pending approval.", createdAt: Timestamp.now() },
-    { id: 'N003', message: "New listing 'Toyota Camry 2022' pending approval.", createdAt: Timestamp.now() },
-    { id: 'N004', message: "Subscription for 'City Movers Ltd.' has expired.", createdAt: Timestamp.now() },
+    { id: 'N001', message: "New subscription: ₦10,000 from John Adebayo", ownerName: 'John Adebayo', plan: 'Weekly', eventType: 'new_subscription', createdAt: Timestamp.now(), read: false },
+    { id: 'N002', message: "New owner 'Bayo Adekunle' needs approval.", ownerName: 'Bayo Adekunle', plan: 'None', eventType: 'new_owner', createdAt: Timestamp.now(), read: true },
+    { id: 'N003', message: "Subscription for 'Prestige Rides' has expired.", ownerName: 'Prestige Rides', plan: 'Yearly', eventType: 'subscription_expired', createdAt: Timestamp.now(), read: false },
+    { id: 'N004', message: "City Movers Ltd. is at 80% of their listing limit.", ownerName: 'City Movers Ltd.', plan: 'Yearly', eventType: 'limit_warning', createdAt: Timestamp.now(), read: false },
 ];
 
 export const seedableCategories = [

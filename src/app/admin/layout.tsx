@@ -8,8 +8,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { NotificationsDropdown } from "@/components/admin/notifications-dropdown";
 
 const adminNavLinks = [
   { href: "/admin", label: "Dashboard", icon: Home },
@@ -19,6 +19,20 @@ const adminNavLinks = [
   { href: "/admin/reports", label: "Reports", icon: Flag },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
+
+// A helper function to get the page title from the pathname
+const getPageTitle = (pathname: string) => {
+    if (pathname === '/admin') return 'Dashboard';
+    for (const link of adminNavLinks) {
+        if (pathname.startsWith(link.href) && link.href !== '/admin') {
+            return link.label;
+        }
+    }
+    // Handle nested pages like /admin/listings/add
+    if (pathname.startsWith('/admin/listings/')) return 'Listings';
+    return 'Admin';
+}
+
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
@@ -92,7 +106,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <SidebarHeader>
                 <div className="flex items-center gap-2 p-2">
                     <Car className="h-8 w-8 text-primary" />
-                    <span className="text-xl font-bold font-headline">Orange Rides Admin</span>
+                    <span className="text-xl font-bold font-headline">Orange Rides</span>
                 </div>
             </SidebarHeader>
             <SidebarContent>
@@ -109,7 +123,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     ))}
                 </SidebarMenu>
             </SidebarContent>
-            <SidebarContent className="mt-auto flex-col-reverse">
+            <SidebarContent className="mt-auto">
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton onClick={handleLogout}>
@@ -121,12 +135,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </SidebarContent>
         </Sidebar>
         <SidebarInset>
-            <div className="p-4 md:p-8">
-                <div className="md:hidden mb-4">
+            <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
+                <div className="md:hidden">
                     <SidebarTrigger />
                 </div>
+                <div className="flex w-full items-center gap-4">
+                    <h1 className="flex-1 text-2xl font-bold font-headline">{getPageTitle(pathname)}</h1>
+                    <NotificationsDropdown />
+                </div>
+            </header>
+            <main className="flex-1 p-4 md:p-8">
                  {children}
-            </div>
+            </main>
         </SidebarInset>
     </SidebarProvider>
   );

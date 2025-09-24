@@ -149,7 +149,7 @@ export default function AddListingPage() {
                 const listingsSnapshot = await getDocs(listingsQuery);
                 const currentListingsCount = listingsSnapshot.size;
 
-                // 3. Enforce the limit
+                 // 3. Enforce the limit
                 if (currentListingsCount >= limit) {
                     const errorMsg = `This owner has reached the maximum of ${limit} listings for their ${plan} plan. Please upgrade their plan to add more.`;
                     toast({
@@ -161,12 +161,28 @@ export default function AddListingPage() {
                     // Create a notification for the admin
                     await addDoc(collection(db, 'notifications'), {
                         message: `Listing limit reached for ${selectedOwner?.name} on ${plan} plan.`,
+                        ownerName: selectedOwner?.name,
+                        plan: plan,
+                        eventType: 'limit_reached',
                         createdAt: serverTimestamp(),
-                        type: 'alert'
+                        read: false
                     });
 
                     setIsSubmitting(false);
                     return;
+                }
+                
+                // 4. Check for 80% warning
+                const usagePercentage = (currentListingsCount + 1) / limit;
+                if (usagePercentage >= 0.8) {
+                     await addDoc(collection(db, 'notifications'), {
+                        message: `${selectedOwner?.name} is at ${Math.round(usagePercentage * 100)}% of their listing limit.`,
+                        ownerName: selectedOwner?.name,
+                        plan: plan,
+                        eventType: 'limit_warning',
+                        createdAt: serverTimestamp(),
+                        read: false
+                    });
                 }
             }
         }
