@@ -13,6 +13,7 @@ import { MoreHorizontal, PlusCircle, Car, CheckCircle, Star, Trash2 } from "luci
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import Link from "next/link";
 
 type Listing = {
     id: string;
@@ -88,9 +89,11 @@ export default function ManageListingsPage() {
         <div className="flex flex-col gap-8">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold font-headline">Manage Listings</h1>
-                <Button>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Listing
+                <Button asChild>
+                    <Link href="/admin/listings/add">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Listing
+                    </Link>
                 </Button>
             </div>
 
