@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { format, formatDistanceToNow } from 'date-fns';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import Image from "next/image";
@@ -150,7 +150,7 @@ export default function ReportsPage() {
         }
 
         const reportRef = doc(db, 'reports', selectedReport.id);
-        const noteToAdd: Note = {
+        const noteToAdd = {
             id: new Date().toISOString() + Math.random(),
             author: "Admin", // In a real app, this would be the current user's name
             message: newNote,
@@ -340,7 +340,7 @@ export default function ReportsPage() {
                                         <div><strong>Date:</strong> {formatDate(selectedReport.dateReported)}</div>
                                         <div><strong>Status:</strong> <Badge variant={getStatusVariant(selectedReport.status)}>{selectedReport.status}</Badge></div>
                                         <div><strong>Reason:</strong> {selectedReport.reason}</div>
-                                        {selectedReport.notes && <div className="pt-2"><strong>Initial Comment:</strong> {selectedReport.notes}</div>}
+                                        {selectedReport.notes && <div className="pt-2"><strong>Initial Comment:</strong> {Array.isArray(selectedReport.notes) ? 'See notes below' : selectedReport.notes}</div>}
                                     </div>
                                 </div>
 
@@ -426,8 +426,8 @@ export default function ReportsPage() {
                                                 />
                                             </div>
                                             <h5 className="font-bold text-lg">{reportedListing.name}</h5>
-                                            <p className="text-sm text-muted-foreground flex items-center gap-2"><Car className="h-4 w-4" /> {reportedListing.type}</p>
-                                            <p className="text-sm text-muted-foreground flex items-center gap-2"><User className="h-4 w-4" /> Owner: {reportedListing.owner}</p>
+                                            <div className="text-sm text-muted-foreground flex items-center gap-2"><Car className="h-4 w-4" /> {reportedListing.type}</div>
+                                            <div className="text-sm text-muted-foreground flex items-center gap-2"><User className="h-4 w-4" /> Owner: {reportedListing.owner}</div>
                                             <Button asChild variant="outline" size="sm" className="mt-4 w-full">
                                                 <Link href={`/admin/listings/edit/${reportedListing.id}`} target="_blank">View Full Listing</Link>
                                             </Button>
