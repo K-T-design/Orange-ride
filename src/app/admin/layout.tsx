@@ -29,23 +29,19 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        // If no user is logged in and not already on the login page, redirect
         if (pathname !== '/admin/login') {
           router.push('/admin/login');
         } else {
-          setIsLoading(false); // On login page and not logged in, stop loading
+          setIsLoading(false);
         }
       } else {
-        // User is logged in
-        if(pathname === '/admin/login') {
-          // If they are on the login page, redirect to dashboard
+        if (pathname === '/admin/login') {
           router.push('/admin');
+        } else {
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
     });
-
-    // On component unmount, unsubscribe from the listener
     return () => unsubscribe();
   }, [router, pathname]);
 
@@ -67,9 +63,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   };
 
 
-  // While checking auth state, show a loader
   if (isLoading) {
-    // Prevent showing the main layout loader on the login page itself
     if (pathname === '/admin/login') {
         return <>{children}</>
     }
@@ -88,7 +82,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  // Don't render the layout for the login page
   if (pathname === '/admin/login') {
       return <>{children}</>;
   }
