@@ -2,17 +2,21 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, Users, CheckCircle, XCircle, AlertTriangle, Trash2 } from "lucide-react";
+import { MoreHorizontal, Users, CheckCircle, XCircle, AlertTriangle, Trash2, Edit } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 type Owner = {
@@ -21,6 +25,7 @@ type Owner = {
   contact: string;
   plan: string;
   status: string;
+  lastEditedAt?: any;
 };
 
 const getStatusVariant = (status: string) => {
@@ -35,6 +40,9 @@ const getStatusVariant = (status: string) => {
 export default function ManageOwnersPage() {
     const [owners, setOwners] = useState<Owner[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [currentOwner, setCurrentOwner] = useState<Owner | null>(null);
+
     const { toast } = useToast();
 
     useEffect(() => {
@@ -50,7 +58,7 @@ export default function ManageOwnersPage() {
     const handleUpdateStatus = async (ownerId: string, newStatus: 'Active' | 'Suspended') => {
         const ownerRef = doc(db, 'rideOwners', ownerId);
         try {
-            await updateDoc(ownerRef, { status: newStatus });
+            await updateDoc(ownerRef, { status: newStatus, lastEditedAt: serverTimestamp() });
             toast({
                 title: "Status Updated",
                 description: `Owner has been successfully ${newStatus === 'Active' ? 'activated' : 'suspended'}.`,
@@ -79,6 +87,42 @@ export default function ManageOwnersPage() {
                 variant: "destructive",
                 title: "Deletion Failed",
                 description: "Could not delete the owner. Please try again.",
+            });
+        }
+    };
+    
+    const openEditDialog = (owner: Owner) => {
+        setCurrentOwner(owner);
+        setIsEditDialogOpen(true);
+    };
+
+    const handleSaveChanges = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!currentOwner) return;
+
+        const formData = new FormData(e.currentTarget);
+        const updatedData = {
+            name: formData.get('name') as string,
+            contact: formData.get('contact') as string,
+            plan: formData.get('plan') as string,
+            status: formData.get('status') as string,
+            lastEditedAt: serverTimestamp(),
+        };
+
+        const ownerRef = doc(db, 'rideOwners', currentOwner.id);
+        try {
+            await updateDoc(ownerRef, updatedData);
+            toast({
+                title: "Owner Updated",
+                description: "The owner's details have been successfully saved.",
+            });
+            setIsEditDialogOpen(false);
+        } catch (error) {
+            console.error("Error updating owner:", error);
+            toast({
+                variant: "destructive",
+                title: "Update Failed",
+                description: "Could not save changes. Please try again.",
             });
         }
     };
@@ -137,6 +181,10 @@ export default function ManageOwnersPage() {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onSelect={() => openEditDialog(owner)}>
+                                                            <Edit /> Edit Owner
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
                                                         <DropdownMenuItem onSelect={() => handleUpdateStatus(owner.id, 'Active')} disabled={owner.status === 'Active'}>
                                                             <CheckCircle /> Approve/Activate
                                                         </DropdownMenuItem>
@@ -174,6 +222,62 @@ export default function ManageOwnersPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Ride Owner</DialogTitle>
+                        <DialogDescription>
+                           Make changes to the owner's details here. Click save when you're done.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {currentOwner && (
+                        <form onSubmit={handleSaveChanges} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="name">Owner Name</Label>
+                                <Input id="name" name="name" defaultValue={currentOwner.name} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="contact">Contact Info (Email/Phone)</Label>
+                                <Input id="contact" name="contact" defaultValue={currentOwner.contact} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="plan">Subscription Plan</Label>
+                                <Select name="plan" defaultValue={currentOwner.plan}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a plan" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="None">None</SelectItem>
+                                        <SelectItem value="Weekly">Weekly</SelectItem>
+                                        <SelectItem value="Monthly">Monthly</SelectItem>
+                                        <SelectItem value="Yearly">Yearly</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="status">Status</Label>
+                                <Select name="status" defaultValue={currentOwner.status}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Active">Active</SelectItem>
+                                        <SelectItem value="Suspended">Suspended</SelectItem>
+                                        <SelectItem value="Pending Approval">Pending Approval</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
+                                <Button type="submit">Save Changes</Button>
+                            </DialogFooter>
+                        </form>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
+
+    
