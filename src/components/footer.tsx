@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -14,8 +15,8 @@ const Logo = () => (
 export function Footer() {
   const pathname = usePathname();
 
-  // Don't render footer for admin pages
-  if (pathname.startsWith('/admin')) {
+  // Don't render footer for admin or auth pages
+  if (pathname.startsWith('/admin') || pathname.startsWith('/login') || pathname.startsWith('/signup')) {
     return null;
   }
 

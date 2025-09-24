@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -45,8 +46,8 @@ const NavLink = ({ href, label }: { href: string; label: string }) => {
 export function Header() {
   const pathname = usePathname();
 
-  // Don't render header for admin pages
-  if (pathname.startsWith('/admin')) {
+  // Don't render header for admin or auth pages
+  if (pathname.startsWith('/admin') || pathname.startsWith('/login') || pathname.startsWith('/signup')) {
     return null;
   }
 
@@ -109,12 +110,22 @@ export function Header() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>My Rides</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/profile">Profile</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/my-rides">My Rides</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings">Settings</Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Sign In</DropdownMenuItem>
-              <DropdownMenuItem>Sign Up</DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                 <Link href="/login">Sign In</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/signup">Sign Up</Link>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
