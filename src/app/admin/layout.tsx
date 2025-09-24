@@ -1,3 +1,4 @@
+
 'use client';
 
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
@@ -28,8 +29,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        // If no user is logged in, redirect to login page
-        router.push('/admin/login');
+        // If no user is logged in and not already on the login page, redirect
+        if (pathname !== '/admin/login') {
+          router.push('/admin/login');
+        } else {
+          setIsLoading(false); // On login page and not logged in, stop loading
+        }
       } else {
         // User is logged in
         if(pathname === '/admin/login') {
@@ -63,7 +68,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
 
   // While checking auth state, show a loader
-  if (isLoading && pathname !== '/admin/login') {
+  if (isLoading) {
+    // Prevent showing the main layout loader on the login page itself
+    if (pathname === '/admin/login') {
+        return <>{children}</>
+    }
     return (
         <div className="flex h-screen items-center justify-center">
             <div className="flex flex-col items-center gap-4">
