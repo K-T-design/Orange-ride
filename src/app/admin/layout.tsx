@@ -1,6 +1,14 @@
+'use client';
+
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
-import { Home, Users, Car, CreditCard, Flag, Settings } from "lucide-react";
-import { ReactNode } from "react";
+import { Home, Users, Car, CreditCard, Flag, Settings, LogOut } from "lucide-react";
+import { ReactNode, useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const adminNavLinks = [
   { href: "/admin", label: "Dashboard", icon: Home },
@@ -12,8 +20,70 @@ const adminNavLinks = [
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  // For now, we'll wrap the children in a simple div.
-  // In the future, we will add authentication checks here.
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        // If no user is logged in, redirect to login page
+        router.push('/admin/login');
+      } else {
+        // User is logged in
+        if(pathname === '/admin/login') {
+          // If they are on the login page, redirect to dashboard
+          router.push('/admin');
+        }
+        setIsLoading(false);
+      }
+    });
+
+    // On component unmount, unsubscribe from the listener
+    return () => unsubscribe();
+  }, [router, pathname]);
+
+  const handleLogout = async () => {
+    try {
+        await signOut(auth);
+        toast({
+            title: "Logged Out",
+            description: "You have been successfully logged out.",
+        });
+        router.push('/admin/login');
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Logout Failed",
+            description: error.message || "An unknown error occurred.",
+        })
+    }
+  };
+
+
+  // While checking auth state, show a loader
+  if (isLoading && pathname !== '/admin/login') {
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+                <Car className="h-12 w-12 animate-pulse text-primary" />
+                <p className="text-lg font-semibold">Authenticating...</p>
+                <div className="w-64 space-y-4">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                </div>
+            </div>
+        </div>
+    );
+  }
+
+  // Don't render the layout for the login page
+  if (pathname === '/admin/login') {
+      return <>{children}</>;
+  }
+  
   return (
     <SidebarProvider>
         <Sidebar>
@@ -35,6 +105,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     ))}
+                </SidebarMenu>
+            </SidebarContent>
+            <SidebarContent className="mt-auto flex-col-reverse">
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={handleLogout}>
+                            <LogOut />
+                            <span>Logout</span>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarContent>
         </Sidebar>
