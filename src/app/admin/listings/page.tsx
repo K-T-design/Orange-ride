@@ -9,11 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, Car, CheckCircle, Star, Trash2 } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Car, CheckCircle, Star, Trash2, Edit } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type Listing = {
     id: string;
@@ -38,6 +39,7 @@ export default function ManageListingsPage() {
     const [listings, setListings] = useState<Listing[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
+    const router = useRouter();
 
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, "listings"), (snapshot) => {
@@ -83,6 +85,10 @@ export default function ManageListingsPage() {
                 description: "Could not delete the listing. Please try again.",
             });
         }
+    };
+    
+    const handleEdit = (listingId: string) => {
+        router.push(`/admin/listings/edit/${listingId}`);
     };
 
     return (
@@ -154,8 +160,8 @@ export default function ManageListingsPage() {
                                                     <DropdownMenuItem onSelect={() => handleUpdateStatus(listing.id, 'Promoted')} disabled={listing.status === 'Promoted'}>
                                                         <Star /> Promote
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem>
-                                                        Edit
+                                                    <DropdownMenuItem onSelect={() => handleEdit(listing.id)}>
+                                                        <Edit /> Edit
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     <AlertDialogTrigger asChild>

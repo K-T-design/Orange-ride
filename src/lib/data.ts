@@ -25,6 +25,13 @@ const NIGERIAN_CITIES = [
   'Akure'
 ];
 
+const vehicleTypes = ['Car', 'Bus', 'Keke', 'Bike', 'VIP'];
+
+const planLimits = {
+  'Weekly': 9,
+  'Monthly': 50,
+  'Yearly': Infinity,
+};
 
 export const RIDES: Ride[] = [
   {
@@ -227,6 +234,15 @@ export const seedableOwners = [
   { id: 'O005', name: 'Chioma Nwosu', contact: '2348056789012', plan: 'Weekly', status: 'Active' },
 ];
 
+export const rideOwners = [
+    { id: 'O001', name: 'John Adebayo' },
+    { id: 'O002', name: 'City Movers Ltd.' },
+    { id: 'O003', name: 'Prestige Rides' },
+    { id: 'O004', name: 'Bayo Adekunle' },
+    { id: 'O005', name: 'Chioma Nwosu' },
+];
+
+
 export const seedableListings = [
   { id: 'L001', type: 'Car', model: 'Toyota Camry', price: 15000, owner: 'John Adebayo', ownerId: 'O001', status: 'Approved' },
   { id: 'L002', type: 'VIP', model: 'Mercedes-Benz E-Class', price: 45000, owner: 'Prestige Rides', ownerId: 'O003', status: 'Promoted' },
@@ -267,4 +283,4 @@ export const seedableSubscriptions = [
 ];
 
 
-export { NIGERIAN_CITIES };
+export { NIGERIAN_CITIES, vehicleTypes, planLimits };
