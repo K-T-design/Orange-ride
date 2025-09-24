@@ -50,9 +50,9 @@ export default function LoginPage() {
                 });
                 // Redirect based on role
                 if (userData.role === 'Ride Owner') {
-                    router.push('/owner/dashboard'); // TODO: Create this page
+                    router.push('/owner/dashboard');
                 } else if (userData.role === 'Customer') {
-                    router.push('/'); 
+                    router.push('/customer/home'); 
                 } else {
                     router.push('/'); // Default redirect
                 }

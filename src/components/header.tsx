@@ -47,7 +47,7 @@ export function Header() {
   const pathname = usePathname();
 
   // Don't render header for admin or auth pages
-  if (pathname.startsWith('/admin') || pathname.startsWith('/login') || pathname.startsWith('/signup')) {
+  if (pathname.startsWith('/admin') || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/customer')) {
     return null;
   }
 

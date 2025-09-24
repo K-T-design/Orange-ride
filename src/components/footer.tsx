@@ -16,7 +16,7 @@ export function Footer() {
   const pathname = usePathname();
 
   // Don't render footer for admin or auth pages
-  if (pathname.startsWith('/admin') || pathname.startsWith('/login') || pathname.startsWith('/signup')) {
+  if (pathname.startsWith('/admin') || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/customer')) {
     return null;
   }
 
