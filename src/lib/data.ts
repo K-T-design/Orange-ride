@@ -242,5 +242,21 @@ export const seedableNotifications = [
     { id: 'N004', message: "Subscription for 'City Movers Ltd.' has expired.", createdAt: Timestamp.now() },
 ];
 
+export const seedableCategories = [
+    { id: 'C01', name: 'Bike', description: 'Motorcycle for quick trips.'},
+    { id: 'C02', name: 'Keke', description: 'Three-wheeled auto-rickshaw.'},
+    { id: 'C03', name: 'Car', description: 'Standard private car.'},
+    { id: 'C04', name: 'Bus', description: 'Shared shuttle or minibus.'},
+    { id: 'C05', name: 'VIP', description: 'Luxury or executive vehicle.'},
+];
+
+export const seedableLocations = [
+    { id: 'LOC01', name: 'Lagos', state: 'Lagos'},
+    { id: 'LOC02', name: 'Abuja', state: 'FCT'},
+    { id: 'LOC03', name: 'Port Harcourt', state: 'Rivers'},
+    { id: 'LOC04', name: 'Kano', state: 'Kano'},
+    { id: 'LOC05', name: 'Ibadan', state: 'Oyo'},
+];
+
 
 export { NIGERIAN_CITIES };
