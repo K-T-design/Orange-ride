@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, doc, updateDoc, arrayUnion, serverTimestamp, query, where, getDoc, DocumentData } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, serverTimestamp, query, where, getDoc, DocumentData } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,14 @@ import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { format, formatDistanceToNow } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 
 type Note = {
+  id: string;
   author: string;
   message: string;
   createdAt: any;
@@ -138,7 +140,8 @@ export default function ReportsPage() {
         }
 
         const reportRef = doc(db, 'reports', selectedReport.id);
-        const noteToAdd = {
+        const noteToAdd: Note = {
+            id: new Date().toISOString() + Math.random(),
             author: "Admin", // In a real app, this would be the current user's name
             message: newNote,
             createdAt: new Date(),
@@ -155,6 +158,34 @@ export default function ReportsPage() {
         } catch (error) {
             console.error("Error adding note:", error);
             toast({ variant: 'destructive', title: "Failed to add note." });
+        }
+    };
+
+    const handleDeleteNote = async (noteId: string) => {
+        if (!selectedReport) return;
+
+        const noteToDelete = selectedReport.notes?.find(note => note.id === noteId);
+        if (!noteToDelete) return;
+        
+        const reportRef = doc(db, 'reports', selectedReport.id);
+        try {
+            await updateDoc(reportRef, {
+                notes: arrayRemove(noteToDelete)
+            });
+
+            // Optimistically update the UI
+            setSelectedReport(prev => {
+                if (!prev || !prev.notes) return prev;
+                return {
+                    ...prev,
+                    notes: prev.notes.filter(note => note.id !== noteId)
+                };
+            });
+            
+            toast({ title: "Note deleted." });
+        } catch (error) {
+            console.error("Error deleting note:", error);
+            toast({ variant: "destructive", title: "Failed to delete note." });
         }
     };
 
@@ -286,17 +317,40 @@ export default function ReportsPage() {
                                <h4 className="font-semibold">Internal Notes</h4>
                                <div className="space-y-3 max-h-48 overflow-y-auto pr-4">
                                    {Array.isArray(selectedReport.notes) && selectedReport.notes.length > 0 ? (
-                                       selectedReport.notes.map((note, index) => (
-                                           <div key={index} className="flex gap-3">
+                                       selectedReport.notes.map((note) => (
+                                           <div key={note.id} className="flex gap-3 group">
                                                 <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
                                                     {note.author.substring(0,1)}
                                                 </div>
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-semibold">{note.author}</span>
-                                                        <span className="text-xs text-muted-foreground">
-                                                            {note.createdAt?.toDate ? formatDistanceToNow(note.createdAt.toDate(), { addSuffix: true }) : 'sending...'}
-                                                        </span>
+                                                <div className="flex-grow">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <span className="font-semibold">{note.author}</span>
+                                                            <span className="text-xs text-muted-foreground ml-2">
+                                                                {note.createdAt?.toDate ? formatDistanceToNow(note.createdAt.toDate(), { addSuffix: true }) : 'sending...'}
+                                                            </span>
+                                                        </div>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive">
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Delete this note?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        This action cannot be undone. The note will be permanently deleted.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleDeleteNote(note.id)} className="bg-destructive hover:bg-destructive/90">
+                                                                        Delete
+                                                                    </AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
                                                     </div>
                                                     <p className="text-sm">{note.message}</p>
                                                 </div>
@@ -330,11 +384,3 @@ export default function ReportsPage() {
         </div>
     );
 }
-
-    
-
-    
-
-    
-
-    
