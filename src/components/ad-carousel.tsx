@@ -19,6 +19,7 @@ type Ad = {
   link?: string;
   isActive: boolean;
   priority?: number;
+  createdAt: any;
 };
 
 export function AdCarousel() {
@@ -74,7 +75,6 @@ export function AdCarousel() {
           <CarouselItem key={ad.id}>
             <Card className="overflow-hidden">
               <CardContent className="relative aspect-[16/6] p-0 bg-muted">
-                 <Skeleton className="absolute inset-0" />
                 <Image
                   src={ad.imageUrl}
                   alt={ad.description}
