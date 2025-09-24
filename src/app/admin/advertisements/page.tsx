@@ -16,6 +16,8 @@ import { Switch } from "@/components/ui/switch";
 import Image from "next/image";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 type Ad = {
   id: string;
@@ -23,6 +25,7 @@ type Ad = {
   description: string;
   link?: string;
   isActive: boolean;
+  priority?: number;
 };
 
 export default function ManageAdsPage() {
@@ -35,6 +38,7 @@ export default function ManageAdsPage() {
     const [description, setDescription] = useState('');
     const [imageUrl, setImageUrl] = useState('');
     const [link, setLink] = useState('');
+    const [priority, setPriority] = useState(0);
 
     const { toast } = useToast();
 
@@ -52,6 +56,7 @@ export default function ManageAdsPage() {
             setDescription(currentAd.description);
             setImageUrl(currentAd.imageUrl);
             setLink(currentAd.link || '');
+            setPriority(currentAd.priority || 0);
         } else {
             clearForm();
         }
@@ -62,6 +67,7 @@ export default function ManageAdsPage() {
         setDescription('');
         setImageUrl('');
         setLink('');
+        setPriority(0);
         setCurrentAd(null);
     }
 
@@ -84,6 +90,7 @@ export default function ManageAdsPage() {
                     imageUrl,
                     description,
                     link,
+                    priority,
                 });
                 toast({ title: "Advertisement Updated" });
             } else { // Adding new ad
@@ -91,6 +98,7 @@ export default function ManageAdsPage() {
                     imageUrl,
                     description,
                     link,
+                    priority,
                     isActive: true,
                     createdAt: serverTimestamp(),
                 });
@@ -155,61 +163,76 @@ export default function ManageAdsPage() {
                             <p className="mt-1 text-sm text-muted-foreground">Add a new ad to get started.</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {ads.map((ad) => (
-                                <Card key={ad.id} className="overflow-hidden flex flex-col">
-                                    <div className="relative aspect-video">
-                                        <Image src={ad.imageUrl} alt={ad.description} fill className="object-cover" />
-                                    </div>
-                                    <CardContent className="p-4 flex-grow">
-                                        <p className="text-sm font-medium text-foreground truncate">{ad.description}</p>
-                                        {ad.link && <a href={ad.link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline truncate block">{ad.link}</a>}
-                                    </CardContent>
-                                    <div className="p-4 bg-muted/50 flex items-center justify-between mt-auto">
-                                        <div className="flex items-center gap-2">
-                                            <Switch
-                                                checked={ad.isActive}
-                                                onCheckedChange={() => handleToggleStatus(ad)}
-                                                aria-label="Toggle ad status"
-                                            />
-                                            <Label htmlFor="status" className="text-sm">{ad.isActive ? 'Active' : 'Inactive'}</Label>
-                                        </div>
-                                         <AlertDialog>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onSelect={() => openDialog(ad)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <AlertDialogTrigger asChild>
-                                                        <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                                                            <Trash2 className="mr-2 h-4 w-4" />
-                                                            Delete
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Image</TableHead>
+                                    <TableHead>Description</TableHead>
+                                    <TableHead>Priority</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead><span className="sr-only">Actions</span></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {ads.map((ad) => (
+                                    <TableRow key={ad.id}>
+                                        <TableCell>
+                                            <Image src={ad.imageUrl} alt={ad.description} width={100} height={60} className="object-cover rounded-md" />
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="font-medium">{ad.description}</div>
+                                            {ad.link && <a href={ad.link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline truncate block">{ad.link}</a>}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="secondary">{ad.priority || 0}</Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <Switch
+                                                    checked={ad.isActive}
+                                                    onCheckedChange={() => handleToggleStatus(ad)}
+                                                    aria-label="Toggle ad status"
+                                                />
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <AlertDialog>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onSelect={() => openDialog(ad)}>
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            Edit
                                                         </DropdownMenuItem>
-                                                    </AlertDialogTrigger>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                             <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>This will permanently delete the ad.</AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDeleteAd(ad.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </div>
-                                </Card>
-                            ))}
-                        </div>
+                                                        <DropdownMenuSeparator />
+                                                        <AlertDialogTrigger asChild>
+                                                            <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        </AlertDialogTrigger>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>This will permanently delete the ad.</AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteAd(ad.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
                     )}
                 </CardContent>
             </Card>
@@ -235,6 +258,11 @@ export default function ManageAdsPage() {
                         <div className="space-y-2">
                             <Label htmlFor="link">Link (Optional)</Label>
                             <Input id="link" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://example.com/promo" />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="priority">Priority</Label>
+                            <Input id="priority" type="number" value={priority} onChange={(e) => setPriority(Number(e.target.value))} placeholder="0" />
+                            <p className="text-xs text-muted-foreground">Higher numbers show first. Default is 0.</p>
                         </div>
                         <DialogFooter>
                             <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>

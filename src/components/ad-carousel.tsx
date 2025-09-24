@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -18,6 +18,7 @@ type Ad = {
   description: string;
   link?: string;
   isActive: boolean;
+  priority?: number;
 };
 
 export function AdCarousel() {
@@ -25,11 +26,19 @@ export function AdCarousel() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, 'advertisements'), where('isActive', '==', true));
+    const q = query(
+        collection(db, 'advertisements'), 
+        where('isActive', '==', true),
+        orderBy('priority', 'desc'),
+        orderBy('createdAt', 'desc')
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const adsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Ad));
       setAds(adsData);
       setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching ads: ", error);
+        setIsLoading(false);
     });
 
     return () => unsubscribe();

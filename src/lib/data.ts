@@ -289,9 +289,9 @@ export const seedableReports = [
 ];
 
 export const seedableAdvertisements = [
-  { id: 'AD01', description: '20% off all VIP rides this weekend!', imageUrl: 'https://picsum.photos/seed/ad1/1200/400', link: '/search?type=VIP', isActive: true, createdAt: Timestamp.now() },
-  { id: 'AD02', description: 'Fast and affordable bike rides across the city.', imageUrl: 'https://picsum.photos/seed/ad2/1200/400', isActive: true, createdAt: Timestamp.now() },
-  { id: 'AD03', description: 'Travel in comfort. Book a private car today.', imageUrl: 'https://picsum.photos/seed/ad3/1200/400', link: '/search?type=Car', isActive: false, createdAt: Timestamp.now() },
+  { id: 'AD01', description: '20% off all VIP rides this weekend!', imageUrl: 'https://picsum.photos/seed/ad1/1200/400', link: '/search?type=VIP', isActive: true, createdAt: Timestamp.now(), priority: 10 },
+  { id: 'AD02', description: 'Fast and affordable bike rides across the city.', imageUrl: 'https://picsum.photos/seed/ad2/1200/400', isActive: true, createdAt: Timestamp.now(), priority: 0 },
+  { id: 'AD03', description: 'Travel in comfort. Book a private car today.', imageUrl: 'https://picsum.photos/seed/ad3/1200/400', link: '/search?type=Car', isActive: false, createdAt: Timestamp.now(), priority: 0 },
 ];
 
 
