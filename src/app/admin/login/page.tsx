@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -7,22 +8,35 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Car } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
+
 
 export default function AdminLoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
+    const { toast } = useToast();
 
-    const handleLogin = (e: React.FormEvent) => {
+
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Placeholder for Firebase Auth
-        if (email === 'admin@orangerides.com' && password === 'password') {
-            setError('');
+        setIsLoading(true);
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
             // On successful login, redirect to the admin dashboard
             router.push('/admin');
-        } else {
-            setError('Invalid email or password.');
+        } catch (error: any) {
+            console.error("Firebase Auth Error:", error);
+            toast({
+                variant: "destructive",
+                title: "Login Failed",
+                description: error.message || "An unknown error occurred.",
+            })
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -51,6 +65,7 @@ export default function AdminLoginPage() {
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
+                                    disabled={isLoading}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -61,11 +76,11 @@ export default function AdminLoginPage() {
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
+                                    disabled={isLoading}
                                 />
                             </div>
-                            {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-                            <Button type="submit" className="w-full">
-                                Sign In
+                            <Button type="submit" className="w-full" disabled={isLoading}>
+                                {isLoading ? 'Signing In...' : 'Sign In'}
                             </Button>
                         </form>
                     </CardContent>
