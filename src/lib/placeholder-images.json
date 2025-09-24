@@ -67,16 +67,22 @@
       "imageHint": "suv coast"
     },
     {
-      "id": "luxury-3",
-      "description": "A classic luxury car",
-      "imageUrl": "https://images.unsplash.com/photo-1621971231299-d2b69f9b3fec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjbGFzc2ljJTIwY2FyfGVufDB8fHx8MTc1ODcyNzgwNHww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "classic car"
+      "id": "keke-1",
+      "description": "A yellow auto-rickshaw (Keke) on a busy street",
+      "imageUrl": "https://images.unsplash.com/photo-1522781063645-d5e4fb3e19aa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHx5ZWxsb3clMjBrZWtlfGVufDB8fHx8MTc1ODcyODA5MXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "yellow keke"
     },
     {
-      "id": "shared-2",
-      "description": "A shuttle bus in a city",
-      "imageUrl": "https://images.unsplash.com/photo-1738050028200-4077e6b68d2a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxzaHV0dGxlJTIwYnVzfGVufDB8fHx8MTc1ODY1MzY0MHww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "shuttle bus"
+      "id": "keke-2",
+      "description": "A blue auto-rickshaw (Keke) waiting for passengers",
+      "imageUrl": "https://images.unsplash.com/photo-1590763470785-4d85b768d81d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxibHVlJTIwa2VrZXxlbnwwfHx8fDE3NTg3MjgwOTF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "blue keke"
+    },
+    {
+      "id": "bike-1",
+      "description": "A delivery bike on a city road",
+      "imageUrl": "https://images.unsplash.com/photo-1617347454431-f49d7ff5c3b1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxkZWxpdmVyeSUyMGJpa2V8ZW58MHx8fHwxNzU4NzI4MDkxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "delivery bike"
     }
   ]
 }

@@ -21,10 +21,11 @@ import {
   FormLabel,
 } from '@/components/ui/form';
 import { MapPin, Search } from 'lucide-react';
+import { NIGERIAN_CITIES } from '@/lib/data';
 
 const formSchema = z.object({
-  from: z.string().min(2, 'Please enter a valid location'),
-  to: z.string().min(2, 'Please enter a valid destination'),
+  from: z.string().min(1, 'Please select a pickup location'),
+  to: z.string().optional(),
   type: z.string(),
 });
 
@@ -42,7 +43,7 @@ export function RideSearchForm() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     const params = new URLSearchParams({
         from: values.from,
-        to: values.to,
+        ...(values.to && { to: values.to }),
         type: values.type,
     });
     router.push(`/search?${params.toString()}`);
@@ -61,16 +62,21 @@ export function RideSearchForm() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="sr-only">From</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                      placeholder="Pickup Location (e.g., Ikeja)"
-                      className="pl-10 h-12 text-base md:rounded-r-none border-0 md:border-r"
-                      {...field}
-                    />
-                  </div>
-                </FormControl>
+                 <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <SelectTrigger className="pl-10 h-12 text-base md:rounded-r-none border-0 md:border-r">
+                          <SelectValue placeholder="Pickup Location" />
+                        </SelectTrigger>
+                      </div>
+                    </FormControl>
+                    <SelectContent>
+                      {NIGERIAN_CITIES.map(city => (
+                        <SelectItem key={city} value={city}>{city}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
               </FormItem>
             )}
           />
@@ -87,7 +93,7 @@ export function RideSearchForm() {
                     <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                         <Input
-                          placeholder="Destination (e.g., Lekki)"
+                          placeholder="Destination (optional)"
                           className="pl-10 h-12 text-base md:rounded-r-none md:rounded-l-none border-0 md:border-r"
                           {...field}
                         />
@@ -113,10 +119,11 @@ export function RideSearchForm() {
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="Any">Any Type</SelectItem>
-                    <SelectItem value="Standard">Standard</SelectItem>
-                    <SelectItem value="Luxury">Luxury</SelectItem>
-                    <SelectItem value="Shared">Shared</SelectItem>
-                    <SelectItem value="SUV">SUV</SelectItem>
+                    <SelectItem value="Bike">Bike</SelectItem>
+                    <SelectItem value="Car">Car</SelectItem>
+                    <SelectItem value="Keke">Keke</SelectItem>
+                    <SelectItem value="Bus">Bus</SelectItem>
+                    <SelectItem value="VIP">VIP</SelectItem>
                   </SelectContent>
                 </Select>
               </FormItem>

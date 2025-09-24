@@ -3,9 +3,15 @@ import type { Ride } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Mail, Phone } from 'lucide-react';
+import { Mail, Phone, Calendar as CalendarIcon, MessageCircle } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/icons/whatsapp-icon';
 import { placeholderImages } from '@/lib/placeholder-images';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 type RideCardProps = {
   ride: Ride;
@@ -44,23 +50,37 @@ export function RideCard({ ride }: RideCardProps) {
         <p className="text-sm text-muted-foreground mt-2">
             Owner: {ride.owner.name}
         </p>
+        <div className="flex items-center text-sm text-muted-foreground mt-2">
+            <CalendarIcon className="h-4 w-4 mr-2" />
+            <span>{ride.schedule}</span>
+        </div>
       </CardContent>
       <CardFooter className="p-4 bg-muted/50 flex justify-end gap-2">
-        <Button variant="outline" size="icon" asChild>
-          <a href={`tel:${ride.owner.contact.phone}`} aria-label="Call owner">
-            <Phone className="h-4 w-4" />
-          </a>
-        </Button>
-        <Button variant="outline" size="icon" asChild>
-          <a href={`https://wa.me/${ride.owner.contact.whatsapp}`} target="_blank" rel="noopener noreferrer" aria-label="Message on WhatsApp">
-            <WhatsAppIcon className="text-green-500"/>
-          </a>
-        </Button>
-        <Button variant="outline" size="icon" asChild>
-          <a href={`mailto:${ride.owner.contact.email}`} aria-label="Email owner">
-            <Mail className="h-4 w-4" />
-          </a>
-        </Button>
+         <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button>Contact Owner</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                    <a href={`tel:${ride.owner.contact.phone}`}>
+                        <Phone className="mr-2 h-4 w-4" />
+                        Call
+                    </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                     <a href={`https://wa.me/${ride.owner.contact.whatsapp}`} target="_blank" rel="noopener noreferrer">
+                        <MessageCircle className="mr-2 h-4 w-4" />
+                        WhatsApp
+                    </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <a href={`mailto:${ride.owner.contact.email}`}>
+                        <Mail className="mr-2 h-4 w-4" />
+                        Email
+                    </a>
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
       </CardFooter>
     </Card>
   );

@@ -1,7 +1,7 @@
 export type Ride = {
   id: string;
   name: string;
-  type: 'Standard' | 'SUV' | 'Luxury' | 'Shared';
+  type: 'Bike' | 'Car' | 'Keke' | 'Bus' | 'VIP';
   price: number;
   pickup: string;
   destination: string;
@@ -15,4 +15,5 @@ export type Ride = {
   };
   image: string;
   isPromoted: boolean;
+  schedule: string;
 };

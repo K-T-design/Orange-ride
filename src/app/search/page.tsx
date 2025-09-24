@@ -14,14 +14,15 @@ type SearchPageProps = {
   };
 };
 
-const findRides = (pickup: string, destination: string): Ride[] => {
-  if (!pickup && !destination) return [];
-  // This is mock logic. A real app would query a database.
-  return RIDES.filter(
-    (ride) =>
-      ride.pickup.toLowerCase().includes(pickup.toLowerCase()) &&
-      ride.destination.toLowerCase().includes(destination.toLowerCase())
-  );
+const findRides = (pickup: string, destination?: string, type?: string): Ride[] => {
+  if (!pickup) return [];
+
+  return RIDES.filter((ride) => {
+    const pickupMatch = ride.pickup.toLowerCase().includes(pickup.toLowerCase());
+    const destinationMatch = !destination || ride.destination.toLowerCase().includes(destination.toLowerCase());
+    const typeMatch = !type || type === 'Any' || ride.type === type;
+    return pickupMatch && destinationMatch && typeMatch;
+  });
 };
 
 const SearchResults = async ({ searchParams }: SearchPageProps) => {
@@ -29,7 +30,7 @@ const SearchResults = async ({ searchParams }: SearchPageProps) => {
   const destination = searchParams.to || '';
   const rideType = searchParams.type || 'Any';
 
-  const directResults = findRides(pickup, destination);
+  const directResults = findRides(pickup, destination, rideType);
   const foundRideIds = new Set(directResults.map((r) => r.id));
 
   let suggestedPickupRides: Ride[] = [];
@@ -44,7 +45,7 @@ const SearchResults = async ({ searchParams }: SearchPageProps) => {
       });
 
       for (const location of aiSuggestions.suggestedPickupLocations) {
-        const rides = findRides(location, destination);
+        const rides = findRides(location, destination, rideType);
         rides.forEach((ride) => {
           if (!foundRideIds.has(ride.id)) {
             suggestedPickupRides.push(ride);
@@ -54,7 +55,7 @@ const SearchResults = async ({ searchParams }: SearchPageProps) => {
       }
 
       for (const altDest of aiSuggestions.alternativeDestinations) {
-        const rides = findRides(pickup, altDest);
+        const rides = findRides(pickup, altDest, rideType);
         rides.forEach((ride) => {
           if (!foundRideIds.has(ride.id)) {
             alternativeDestinationRides.push(ride);
@@ -87,7 +88,9 @@ const SearchResults = async ({ searchParams }: SearchPageProps) => {
         Search Results
       </h1>
       <p className="text-muted-foreground mb-6">
-        Showing rides from <span className="font-semibold text-primary">{pickup}</span> to <span className="font-semibold text-primary">{destination}</span>
+        Showing rides
+        {pickup && <> from <span className="font-semibold text-primary">{pickup}</span></>}
+        {destination && <> to <span className="font-semibold text-primary">{destination}</span></>}
       </p>
 
       {finalResults.length === 0 ? (
