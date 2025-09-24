@@ -18,6 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Ad = {
   id: string;
@@ -78,27 +79,34 @@ export default function ManageAdsPage() {
 
     const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!imageUrl || !description) {
-            toast({ variant: "destructive", title: "Image URL and description are required." });
+        try {
+            // Basic URL validation
+            new URL(imageUrl);
+        } catch (_) {
+            toast({ variant: "destructive", title: "Invalid Image URL", description: "Please enter a valid URL." });
             return;
         }
+        if (!description) {
+            toast({ variant: "destructive", title: "Description is required." });
+            return;
+        }
+
         setIsSubmitting(true);
         try {
+            const adData = {
+                imageUrl,
+                description,
+                link: link || null,
+                priority: priority || 0,
+            };
+
             if (currentAd) { // Editing existing ad
                 const adRef = doc(db, 'advertisements', currentAd.id);
-                await updateDoc(adRef, {
-                    imageUrl,
-                    description,
-                    link,
-                    priority,
-                });
+                await updateDoc(adRef, adData);
                 toast({ title: "Advertisement Updated" });
             } else { // Adding new ad
                 await addDoc(collection(db, "advertisements"), {
-                    imageUrl,
-                    description,
-                    link,
-                    priority,
+                    ...adData,
                     isActive: true,
                     createdAt: serverTimestamp(),
                 });
@@ -177,7 +185,9 @@ export default function ManageAdsPage() {
                                 {ads.map((ad) => (
                                     <TableRow key={ad.id}>
                                         <TableCell>
-                                            <Image src={ad.imageUrl} alt={ad.description} width={100} height={60} className="object-cover rounded-md" />
+                                             <div className="relative h-16 w-28 rounded-md bg-muted">
+                                                <Image src={ad.imageUrl} alt={ad.description} layout="fill" className="object-cover rounded-md" />
+                                            </div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="font-medium">{ad.description}</div>
@@ -249,7 +259,7 @@ export default function ManageAdsPage() {
                         <div className="space-y-2">
                             <Label htmlFor="imageUrl">Image URL</Label>
                             <Input id="imageUrl" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://picsum.photos/seed/ad1/600/400" required />
-                            <p className="text-xs text-muted-foreground">For this demo, please use an image URL. Firebase Storage upload is not implemented.</p>
+                            <p className="text-xs text-muted-foreground">For this demo, please use a valid image URL.</p>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="description">Description</Label>

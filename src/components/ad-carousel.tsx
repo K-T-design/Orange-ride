@@ -47,7 +47,7 @@ export function AdCarousel() {
   if (isLoading) {
     return (
       <div className="w-full">
-        <Skeleton className="aspect-[16/5] w-full rounded-lg" />
+        <Skeleton className="aspect-[16/6] w-full rounded-lg" />
       </div>
     );
   }
@@ -73,12 +73,14 @@ export function AdCarousel() {
         {ads.map((ad) => (
           <CarouselItem key={ad.id}>
             <Card className="overflow-hidden">
-              <CardContent className="relative aspect-[16/6] p-0">
+              <CardContent className="relative aspect-[16/6] p-0 bg-muted">
+                 <Skeleton className="absolute inset-0" />
                 <Image
                   src={ad.imageUrl}
                   alt={ad.description}
                   fill
-                  className="object-cover"
+                  className="object-cover transition-opacity opacity-0 duration-500"
+                  onLoadingComplete={(image) => image.classList.remove('opacity-0')}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                 <div className="absolute bottom-0 left-0 p-6 text-white">
