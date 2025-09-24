@@ -141,7 +141,7 @@ export default function ReportsPage() {
         const noteToAdd = {
             author: "Admin", // In a real app, this would be the current user's name
             message: newNote,
-            createdAt: serverTimestamp(),
+            createdAt: new Date(),
         };
         
         try {
@@ -151,7 +151,7 @@ export default function ReportsPage() {
             toast({ title: "Note added." });
             setNewNote('');
             // Manually update the state to show the new note instantly
-            setSelectedReport(prev => prev ? ({...prev, notes: [...(prev.notes || []), {...noteToAdd, createdAt: new Date()}]}) : null);
+            setSelectedReport(prev => prev ? ({...prev, notes: [...(prev.notes || []), noteToAdd]}) : null);
         } catch (error) {
             console.error("Error adding note:", error);
             toast({ variant: 'destructive', title: "Failed to add note." });
@@ -271,8 +271,8 @@ export default function ReportsPage() {
                            <div className="grid grid-cols-2 gap-4">
                                 <div><strong>Listing ID:</strong> <Link href={`/admin/listings/edit/${selectedReport.listingId}`} className="text-primary hover:underline">{selectedReport.listingId}</Link></div>
                                 <div><strong>Status:</strong> <Badge variant={getStatusVariant(selectedReport.status)}>{selectedReport.status}</Badge></div>
-                                <p><strong>Reported On:</strong> {formatDate(selectedReport.dateReported)}</p>
-                                <p><strong>Reason:</strong> {selectedReport.reason}</p>
+                                <div><strong>Reported On:</strong> {formatDate(selectedReport.dateReported)}</div>
+                                <div><strong>Reason:</strong> {selectedReport.reason}</div>
                            </div>
                            <div>
                              <h4 className="font-semibold mb-2">Reporter Information</h4>
@@ -330,6 +330,8 @@ export default function ReportsPage() {
         </div>
     );
 }
+
+    
 
     
 
