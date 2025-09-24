@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, Flag, AlertTriangle, CheckCircle, Trash2, UserX, MessageSquare, Send } from "lucide-react";
+import { MoreHorizontal, Flag, AlertTriangle, CheckCircle, Trash2, UserX, MessageSquare, Send, Car, User } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
@@ -17,8 +17,8 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import Image from "next/image";
+import { placeholderImages } from "@/lib/placeholder-images";
 
 
 type Note = {
@@ -38,6 +38,14 @@ type Report = {
   status: 'Pending' | 'Reviewed' | 'Resolved';
   dateReported: any;
 };
+
+type Listing = {
+    id: string;
+    name: string;
+    type: string;
+    owner: string;
+    image: string;
+}
 
 const getStatusVariant = (status: string) => {
     switch (status) {
@@ -60,6 +68,8 @@ export default function ReportsPage() {
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [selectedReport, setSelectedReport] = useState<Report | null>(null);
     const [newNote, setNewNote] = useState('');
+    const [reportedListing, setReportedListing] = useState<Listing | null>(null);
+    const [isListingLoading, setIsListingLoading] = useState(false);
 
     const { toast } = useToast();
 
@@ -189,9 +199,25 @@ export default function ReportsPage() {
         }
     };
 
-    const openDetails = (report: Report) => {
+    const openDetails = async (report: Report) => {
         setSelectedReport(report);
         setIsDetailOpen(true);
+        
+        // Fetch listing details for the preview
+        setIsListingLoading(true);
+        setReportedListing(null);
+        try {
+            const listingRef = doc(db, 'listings', report.listingId);
+            const listingSnap = await getDoc(listingRef);
+            if (listingSnap.exists()) {
+                setReportedListing({ id: listingSnap.id, ...listingSnap.data() } as Listing);
+            }
+        } catch (error) {
+            console.error("Error fetching listing preview:", error);
+            toast({ variant: 'destructive', title: "Failed to load listing preview." });
+        } finally {
+            setIsListingLoading(false);
+        }
     };
 
     return (
@@ -290,97 +316,141 @@ export default function ReportsPage() {
             </Card>
 
             <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-                <DialogContent className="sm:max-w-2xl">
+                <DialogContent className="sm:max-w-4xl grid-rows-[auto,1fr,auto]">
                     <DialogHeader>
                         <DialogTitle>Report Details</DialogTitle>
                         <DialogDescription>
-                            Review the report details and take necessary actions.
+                            Review the report, add notes, and take necessary actions.
                         </DialogDescription>
                     </DialogHeader>
                     {selectedReport && (
-                        <div className="grid gap-6 py-4">
-                           <div className="grid grid-cols-2 gap-4">
-                                <div><strong>Listing ID:</strong> <Link href={`/admin/listings/edit/${selectedReport.listingId}`} className="text-primary hover:underline">{selectedReport.listingId}</Link></div>
-                                <div><strong>Status:</strong> <Badge variant={getStatusVariant(selectedReport.status)}>{selectedReport.status}</Badge></div>
-                                <div><strong>Reported On:</strong> {formatDate(selectedReport.dateReported)}</div>
-                                <div><strong>Reason:</strong> {selectedReport.reason}</div>
-                           </div>
-                           <div>
-                             <h4 className="font-semibold mb-2">Reporter Information</h4>
-                             <div className="text-sm p-4 bg-muted rounded-md">
-                                <p><strong>Name:</strong> {selectedReport.reporterName || 'N/A'}</p>
-                                <p><strong>Email:</strong> {selectedReport.reporterEmail || 'N/A'}</p>
-                             </div>
+                        <div className="grid md:grid-cols-2 gap-8 overflow-y-auto max-h-[70vh] pr-4">
+                           <div className="space-y-6">
+                                <div>
+                                    <h4 className="font-semibold mb-2">Reporter Information</h4>
+                                    <div className="text-sm p-4 bg-muted rounded-md space-y-2">
+                                        <div><strong>Name:</strong> {selectedReport.reporterName || 'N/A'}</div>
+                                        <div><strong>Email:</strong> {selectedReport.reporterEmail || 'N/A'}</div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h4 className="font-semibold mb-2">Report Details</h4>
+                                    <div className="text-sm p-4 bg-muted rounded-md space-y-2">
+                                        <div><strong>Date:</strong> {formatDate(selectedReport.dateReported)}</div>
+                                        <div><strong>Status:</strong> <Badge variant={getStatusVariant(selectedReport.status)}>{selectedReport.status}</Badge></div>
+                                        <div><strong>Reason:</strong> {selectedReport.reason}</div>
+                                        {selectedReport.notes && <div className="pt-2"><strong>Initial Comment:</strong> {selectedReport.notes}</div>}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h4 className="font-semibold">Internal Notes</h4>
+                                    <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                                        {Array.isArray(selectedReport.notes) && selectedReport.notes.length > 0 ? (
+                                            selectedReport.notes.map((note) => (
+                                                <div key={note.id} className="flex gap-3 group">
+                                                        <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                                                            {note.author.substring(0,1)}
+                                                        </div>
+                                                        <div className="flex-grow">
+                                                            <div className="flex items-center justify-between">
+                                                                <div>
+                                                                    <span className="font-semibold">{note.author}</span>
+                                                                    <span className="text-xs text-muted-foreground ml-2">
+                                                                        {note.createdAt?.toDate ? formatDistanceToNow(note.createdAt.toDate(), { addSuffix: true }) : 'sending...'}
+                                                                    </span>
+                                                                </div>
+                                                                <AlertDialog>
+                                                                    <AlertDialogTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive">
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </AlertDialogTrigger>
+                                                                    <AlertDialogContent>
+                                                                        <AlertDialogHeader>
+                                                                            <AlertDialogTitle>Delete this note?</AlertDialogTitle>
+                                                                            <AlertDialogDescription>
+                                                                                This action cannot be undone. The note will be permanently deleted.
+                                                                            </AlertDialogDescription>
+                                                                        </AlertDialogHeader>
+                                                                        <AlertDialogFooter>
+                                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                            <AlertDialogAction onClick={() => handleDeleteNote(note.id)} className="bg-destructive hover:bg-destructive/90">
+                                                                                Delete
+                                                                            </AlertDialogAction>
+                                                                        </AlertDialogFooter>
+                                                                    </AlertDialogContent>
+                                                                </AlertDialog>
+                                                            </div>
+                                                            <p className="text-sm bg-background p-2 rounded-md">{note.message}</p>
+                                                        </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground text-center py-4">No internal notes added yet.</p>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Textarea 
+                                            placeholder="Add a new internal note..." 
+                                            value={newNote} 
+                                            onChange={(e) => setNewNote(e.target.value)}
+                                            rows={2}
+                                        />
+                                        <Button onClick={handleAddNote} size="icon" className="flex-shrink-0">
+                                            <Send className="h-4 w-4" />
+                                            <span className="sr-only">Add Note</span>
+                                        </Button>
+                                    </div>
+                                </div>
                            </div>
 
-                           <div className="space-y-4">
-                               <h4 className="font-semibold">Internal Notes</h4>
-                               <div className="space-y-3 max-h-48 overflow-y-auto pr-4">
-                                   {Array.isArray(selectedReport.notes) && selectedReport.notes.length > 0 ? (
-                                       selectedReport.notes.map((note) => (
-                                           <div key={note.id} className="flex gap-3 group">
-                                                <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
-                                                    {note.author.substring(0,1)}
-                                                </div>
-                                                <div className="flex-grow">
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            <span className="font-semibold">{note.author}</span>
-                                                            <span className="text-xs text-muted-foreground ml-2">
-                                                                {note.createdAt?.toDate ? formatDistanceToNow(note.createdAt.toDate(), { addSuffix: true }) : 'sending...'}
-                                                            </span>
-                                                        </div>
-                                                        <AlertDialog>
-                                                            <AlertDialogTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive">
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </AlertDialogTrigger>
-                                                            <AlertDialogContent>
-                                                                <AlertDialogHeader>
-                                                                    <AlertDialogTitle>Delete this note?</AlertDialogTitle>
-                                                                    <AlertDialogDescription>
-                                                                        This action cannot be undone. The note will be permanently deleted.
-                                                                    </AlertDialogDescription>
-                                                                </AlertDialogHeader>
-                                                                <AlertDialogFooter>
-                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                    <AlertDialogAction onClick={() => handleDeleteNote(note.id)} className="bg-destructive hover:bg-destructive/90">
-                                                                        Delete
-                                                                    </AlertDialogAction>
-                                                                </AlertDialogFooter>
-                                                            </AlertDialogContent>
-                                                        </AlertDialog>
-                                                    </div>
-                                                    <p className="text-sm">{note.message}</p>
-                                                </div>
-                                           </div>
-                                       ))
-                                   ) : (
-                                       <p className="text-sm text-muted-foreground">No notes added yet.</p>
-                                   )}
-                               </div>
-                                <div className="flex gap-2">
-                                    <Textarea 
-                                        placeholder="Add a new note..." 
-                                        value={newNote} 
-                                        onChange={(e) => setNewNote(e.target.value)}
-                                        rows={2}
-                                    />
-                                    <Button onClick={handleAddNote} size="icon" className="flex-shrink-0">
-                                        <Send className="h-4 w-4" />
-                                        <span className="sr-only">Add Note</span>
-                                    </Button>
-                               </div>
-                           </div>
+                            <div className="space-y-6">
+                                <h4 className="font-semibold">Reported Listing Preview</h4>
+                                {isListingLoading ? (
+                                    <Card className="p-4 space-y-4">
+                                        <Skeleton className="h-40 w-full rounded-md" />
+                                        <Skeleton className="h-5 w-3/4" />
+                                        <Skeleton className="h-4 w-1/2" />
+                                    </Card>
+                                ) : reportedListing ? (
+                                    <Card>
+                                        <CardContent className="p-4">
+                                            <div className="relative aspect-video mb-4">
+                                                <Image 
+                                                    src={placeholderImages.find(p => p.id === reportedListing.image)?.imageUrl || `https://picsum.photos/seed/${reportedListing.id}/600/400`} 
+                                                    alt={reportedListing.name}
+                                                    fill
+                                                    className="rounded-md object-cover"
+                                                />
+                                            </div>
+                                            <h5 className="font-bold text-lg">{reportedListing.name}</h5>
+                                            <p className="text-sm text-muted-foreground flex items-center gap-2"><Car className="h-4 w-4" /> {reportedListing.type}</p>
+                                            <p className="text-sm text-muted-foreground flex items-center gap-2"><User className="h-4 w-4" /> Owner: {reportedListing.owner}</p>
+                                            <Button asChild variant="outline" size="sm" className="mt-4 w-full">
+                                                <Link href={`/admin/listings/edit/${reportedListing.id}`} target="_blank">View Full Listing</Link>
+                                            </Button>
+                                        </CardContent>
+                                    </Card>
+                                ) : (
+                                    <div className="text-center text-muted-foreground py-10">
+                                        <p>Could not load listing preview.</p>
+                                    </div>
+                                )}
+                            </div>
 
                         </div>
                     )}
-                     <DialogClose asChild>
-                        <Button type="button" variant="outline">Close</Button>
-                    </DialogClose>
+                     <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="outline">Close</Button>
+                        </DialogClose>
+                     </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
     );
 }
+
+    
