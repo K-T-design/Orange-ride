@@ -135,7 +135,7 @@ export default function ManageAdsPage() {
                                         <p className="text-sm text-muted-foreground truncate">{ad.description}</p>
                                         {ad.link && <a href={ad.link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline truncate block">{ad.link}</a>}
                                     </CardContent>
-                                    <CardFooter className="p-4 bg-muted/50 flex items-center justify-between">
+                                    <div className="p-4 bg-muted/50 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <Switch
                                                 checked={ad.isActive}
@@ -161,7 +161,7 @@ export default function ManageAdsPage() {
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
                                         </AlertDialog>
-                                    </CardFooter>
+                                    </div>
                                 </Card>
                             ))}
                         </div>
