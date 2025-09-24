@@ -10,6 +10,13 @@ import { Car, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
+
+// Hardcoded admin UID for demo purposes
+const ADMIN_UID = 'XgQfA6sCVThsWw2g4iJpYc3F5yG3';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -17,19 +24,64 @@ export default function LoginPage() {
     const [rememberMe, setRememberMe] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
+    const router = useRouter();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        // Dummy loading state
-        setTimeout(() => {
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            if (user.uid === ADMIN_UID) {
+                 router.push('/admin');
+                 return;
+            }
+            
+            // Check user role from Firestore
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                toast({
+                    title: "Login Successful",
+                    description: `Welcome back, ${userData.role}!`,
+                });
+                // Redirect based on role
+                if (userData.role === 'Ride Owner') {
+                    router.push('/owner/dashboard'); // TODO: Create this page
+                } else if (userData.role === 'Customer') {
+                    router.push('/'); 
+                } else {
+                    router.push('/'); // Default redirect
+                }
+            } else {
+                // Should not happen if signup is correct
+                toast({ variant: 'destructive', title: "User data not found." });
+                router.push('/');
+            }
+
+        } catch (error: any) {
+            console.error("Login Error:", error);
+            let errorMessage = "An unknown error occurred.";
+            switch(error.code) {
+                case 'auth/user-not-found':
+                case 'auth/wrong-password':
+                    errorMessage = "Invalid email or password.";
+                    break;
+                case 'auth/invalid-email':
+                    errorMessage = "Please enter a valid email address.";
+                    break;
+            }
             toast({
                 variant: 'destructive',
-                title: "Login Failed (Simulated)",
-                description: "Invalid email or password.",
+                title: "Login Failed",
+                description: errorMessage,
             })
+        } finally {
             setIsLoading(false);
-        }, 2000);
+        }
     };
 
     const handlePasswordReset = () => {
@@ -41,10 +93,21 @@ export default function LoginPage() {
             });
             return;
         }
-        toast({
-            title: "Password Reset Email Sent (Simulated)",
-            description: `If an account exists for ${email}, a password reset link has been sent.`,
-        });
+
+        sendPasswordResetEmail(auth, email)
+            .then(() => {
+                toast({
+                    title: "Password Reset Email Sent",
+                    description: `If an account exists for ${email}, a password reset link has been sent.`,
+                });
+            })
+            .catch((error) => {
+                toast({
+                    variant: "destructive",
+                    title: "Failed to Send Reset Email",
+                    description: error.message,
+                });
+            });
     }
 
     return (

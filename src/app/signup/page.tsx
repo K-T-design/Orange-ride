@@ -14,6 +14,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { Car, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 
 const passwordValidation = z.string().min(8, 'Password must be at least 8 characters.').refine(
   (password) => /^(?=.*[0-9])(?=.*[!@#$%^&*])/.test(password),
@@ -47,6 +51,7 @@ export default function SignUpPage() {
   const [role, setRole] = useState<'Customer' | 'Ride Owner'>('Customer');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -62,17 +67,75 @@ export default function SignUpPage() {
     form.reset({ role: newRole, terms: form.getValues('terms') });
   };
 
-  const onSubmit = (values: FormData) => {
+  const onSubmit = async (values: FormData) => {
     setIsLoading(true);
-    console.log(values);
-    // Dummy loading state
-    setTimeout(() => {
+    try {
+        // 1. Create user in Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        const user = userCredential.user;
+
+        // 2. Prepare user data for Firestore
+        let userData: any = {
+            uid: user.uid,
+            email: values.email,
+            phone: values.phone,
+            role: values.role,
+            createdAt: serverTimestamp(),
+        };
+
+        if (values.role === 'Customer') {
+            userData = { ...userData, fullName: values.fullName };
+        } else { // Ride Owner
+            userData = { 
+                ...userData,
+                businessName: values.businessName,
+                businessType: values.businessType,
+                contactPerson: values.contactPerson,
+                status: 'Pending Approval'
+            };
+            
+            // 3a. Also create an entry in the 'rideOwners' collection for admin management
+            await setDoc(doc(db, 'rideOwners', user.uid), {
+                name: values.businessName,
+                contact: values.email,
+                plan: 'None',
+                status: 'Pending Approval',
+                createdAt: serverTimestamp(),
+            });
+
+             // 3b. Create a notification for the admin
+            await addDoc(collection(db, 'notifications'), {
+                message: `New ride owner '${values.businessName}' signed up and needs approval.`,
+                ownerName: values.businessName,
+                eventType: 'new_owner',
+                createdAt: serverTimestamp(),
+                read: false
+            });
+        }
+        
+        // 3. Save user profile to 'users' collection
+        await setDoc(doc(db, 'users', user.uid), userData);
+
         toast({
-            title: "Account Created (Simulated)",
-            description: "Your account has been successfully created. You can now sign in.",
-        })
+            title: "Account Created!",
+            description: "Your account has been successfully created. Please sign in.",
+        });
+        router.push('/login');
+
+    } catch (error: any) {
+        console.error("Signup Error:", error);
+        let errorMessage = "An unknown error occurred.";
+        if (error.code === 'auth/email-already-in-use') {
+            errorMessage = "This email address is already in use.";
+        }
+        toast({
+            variant: "destructive",
+            title: "Sign-up Failed",
+            description: errorMessage,
+        });
+    } finally {
         setIsLoading(false);
-    }, 2000);
+    }
   };
 
   return (
