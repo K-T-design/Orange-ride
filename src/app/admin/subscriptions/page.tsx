@@ -2,14 +2,14 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, doc, updateDoc, Timestamp, addDoc, getDocs, writeBatch } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, Timestamp, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, CreditCard, Loader2, PlusCircle } from "lucide-react";
+import { MoreHorizontal, CreditCard, Loader2, PlusCircle, Ban, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -33,7 +33,7 @@ type Subscription = {
   plan: 'Weekly' | 'Monthly' | 'Yearly';
   startDate: Timestamp;
   expiryDate: Timestamp;
-  status: 'Active' | 'Expired';
+  status: 'Active' | 'Expired' | 'Suspended';
   listingsUsed: number;
   listingsLimit: number | 'Unlimited';
 };
@@ -48,6 +48,7 @@ const getStatusVariant = (status: string) => {
     switch (status) {
         case 'Active': return 'default';
         case 'Expired': return 'destructive';
+        case 'Suspended': return 'secondary';
         default: return 'outline';
     }
 }
@@ -62,7 +63,7 @@ export default function ManageSubscriptionsPage() {
     const [owners, setOwners] = useState<Owner[]>([]);
     const [listings, setListings] = useState<Listing[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [filter, setFilter] = useState<'All' | 'Active' | 'Expired'>('All');
+    const [filter, setFilter] = useState<'All' | 'Active' | 'Expired' | 'Suspended'>('All');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [currentSub, setCurrentSub] = useState<Partial<Subscription> | null>(null);
 
@@ -81,6 +82,11 @@ export default function ManageSubscriptionsPage() {
         const unsubSubscriptions = onSnapshot(collection(db, "subscriptions"), (snapshot) => {
             const subsData = snapshot.docs.map(doc => {
                 const data = doc.data();
+                // Don't auto-expire if it's suspended
+                if (data.status === 'Suspended') {
+                    return { id: doc.id, ...data } as Subscription;
+                }
+                
                 const now = Timestamp.now();
                 let status: 'Active' | 'Expired' = 'Active';
 
@@ -108,6 +114,28 @@ export default function ManageSubscriptionsPage() {
         setCurrentSub(sub);
         setIsDialogOpen(true);
     };
+
+    const handleUpdateStatus = async (subId: string, newStatus: 'Suspended' | 'Reactivated') => {
+        const subRef = doc(db, 'subscriptions', subId);
+        try {
+            if (newStatus === 'Suspended') {
+                await updateDoc(subRef, { status: 'Suspended' });
+                 toast({ title: "Subscription Suspended" });
+            } else { // Reactivating
+                const sub = subscriptions.find(s => s.id === subId);
+                if (sub) {
+                    const isExpired = sub.expiryDate.toDate() < new Date();
+                    const finalStatus = isExpired ? 'Expired' : 'Active';
+                    await updateDoc(subRef, { status: finalStatus });
+                    toast({ title: "Subscription Reactivated", description: `Status set to ${finalStatus}.` });
+                }
+            }
+        } catch (error) {
+            console.error("Error updating subscription status:", error);
+            toast({ variant: 'destructive', title: "Update Failed" });
+        }
+    };
+
 
     const handleSaveSubscription = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -180,6 +208,7 @@ export default function ManageSubscriptionsPage() {
                         <div className="flex gap-2">
                            <Button variant={filter === 'All' ? 'default' : 'outline'} onClick={() => setFilter('All')}>All</Button>
                            <Button variant={filter === 'Active' ? 'default' : 'outline'} onClick={() => setFilter('Active')}>Active</Button>
+                           <Button variant={filter === 'Suspended' ? 'default' : 'outline'} onClick={() => setFilter('Suspended')}>Suspended</Button>
                            <Button variant={filter === 'Expired' ? 'default' : 'outline'} onClick={() => setFilter('Expired')}>Expired</Button>
                         </div>
                     </div>
@@ -230,7 +259,21 @@ export default function ManageSubscriptionsPage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onSelect={() => handleOpenDialog(sub)}>Edit Plan</DropdownMenuItem>
+                                                {sub.status !== 'Suspended' && (
+                                                    <DropdownMenuItem onSelect={() => handleOpenDialog(sub)}>Edit Plan</DropdownMenuItem>
+                                                )}
+                                                {sub.status === 'Active' && (
+                                                    <DropdownMenuItem onSelect={() => handleUpdateStatus(sub.id, 'Suspended')}>
+                                                        <Ban className="mr-2 h-4 w-4" />
+                                                        Suspend
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {sub.status === 'Suspended' && (
+                                                    <DropdownMenuItem onSelect={() => handleUpdateStatus(sub.id, 'Reactivated')}>
+                                                        <CheckCircle className="mr-2 h-4 w-4" />
+                                                        Reactivate
+                                                    </DropdownMenuItem>
+                                                )}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -253,7 +296,7 @@ export default function ManageSubscriptionsPage() {
                     <form onSubmit={handleSaveSubscription} className="space-y-4">
                          <div className="space-y-2">
                             <Label htmlFor="ownerId">Ride Owner</Label>
-                            <Select name="ownerId" defaultValue={currentSub?.ownerId} required>
+                            <Select name="ownerId" defaultValue={currentSub?.ownerId} required disabled={!!currentSub?.id}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select an owner" />
                                 </SelectTrigger>
@@ -287,3 +330,5 @@ export default function ManageSubscriptionsPage() {
         </div>
     );
 }
+
+    

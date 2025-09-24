@@ -104,7 +104,7 @@ export default function AddListingPage() {
             const ownerId = values.ownerId;
 
             // 1. Find the owner's subscription
-            const subQuery = query(collection(db, 'subscriptions'), where('ownerId', '==', ownerId), where('status', '==', 'Active'));
+            const subQuery = query(collection(db, 'subscriptions'), where('ownerId', '==', ownerId));
             const subSnapshot = await getDocs(subQuery);
 
             if (subSnapshot.empty) {
@@ -118,6 +118,27 @@ export default function AddListingPage() {
             }
 
             const subscription = subSnapshot.docs[0].data();
+
+            if (subscription.status === 'Suspended') {
+                toast({
+                    variant: 'destructive',
+                    title: 'Subscription Suspended',
+                    description: 'This owner\'s subscription is suspended. They cannot add new listings.',
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
+            if (subscription.status !== 'Active') {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Action Blocked',
+                    description: 'This owner does not have an active subscription. Cannot add listing.',
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
             const plan = subscription.plan as keyof typeof planLimits;
             const limit = planLimits[plan];
 
@@ -406,7 +427,7 @@ export default function AddListingPage() {
                                                 <FormControl>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Select an owner to assign this listing to" />
-                                                    </SelectTrigger>
+                                                    </Trigger>
                                                 </FormControl>
                                                 <SelectContent>
                                                     {rideOwners.map(owner => (
@@ -446,6 +467,5 @@ export default function AddListingPage() {
     </div>
   );
 }
-
 
     
