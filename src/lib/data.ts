@@ -1,3 +1,4 @@
+
 import type { Ride } from './types';
 import { Timestamp } from 'firebase/firestore';
 
@@ -282,9 +283,15 @@ export const seedableSubscriptions = [
 ];
 
 export const seedableReports = [
-  { id: 'REP01', listingId: 'L001', reason: 'Incorrect Info', reporterName: 'Jane Doe', reporterEmail: 'jane@example.com', notes: 'The price is wrong.', status: 'Pending', dateReported: Timestamp.now() },
-  { id: 'REP02', listingId: 'L002', reason: 'Spam', reporterEmail: 'test@test.com', notes: 'This looks like a fake listing.', status: 'Reviewed', dateReported: Timestamp.now() },
-  { id: 'REP03', listingId: 'L005', reason: 'Inappropriate', reporterName: 'John Smith', notes: '', status: 'Resolved', dateReported: Timestamp.now() },
+  { id: 'REP01', listingId: 'L001', reason: 'Incorrect Info', reporterName: 'Jane Doe', reporterEmail: 'jane@example.com', notes: [{ id: '1', author: 'Admin', message: 'Investigating price.', createdAt: new Date() }], status: 'Pending', dateReported: Timestamp.now() },
+  { id: 'REP02', listingId: 'L002', reason: 'Spam', reporterEmail: 'test@test.com', notes: [], status: 'Reviewed', dateReported: Timestamp.now() },
+  { id: 'REP03', listingId: 'L005', reason: 'Inappropriate', reporterName: 'John Smith', notes: [], status: 'Resolved', dateReported: Timestamp.now() },
+];
+
+export const seedableAdvertisements = [
+  { id: 'AD01', description: '20% off all VIP rides this weekend!', imageUrl: 'https://picsum.photos/seed/ad1/1200/400', link: '/search?type=VIP', isActive: true, createdAt: Timestamp.now() },
+  { id: 'AD02', description: 'Fast and affordable bike rides across the city.', imageUrl: 'https://picsum.photos/seed/ad2/1200/400', isActive: true, createdAt: Timestamp.now() },
+  { id: 'AD03', description: 'Travel in comfort. Book a private car today.', imageUrl: 'https://picsum.photos/seed/ad3/1200/400', link: '/search?type=Car', isActive: false, createdAt: Timestamp.now() },
 ];
 
 

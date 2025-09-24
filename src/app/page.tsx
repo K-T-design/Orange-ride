@@ -1,8 +1,10 @@
+
 import Image from 'next/image';
 import { RideSearchForm } from '@/components/ride-search-form';
 import { RideCard } from '@/components/ride-card';
 import { RIDES } from '@/lib/data';
 import { placeholderImages } from '@/lib/placeholder-images';
+import { AdCarousel } from '@/components/ad-carousel';
 
 export default function Home() {
   const featuredRides = RIDES.slice(0, 3);
@@ -33,6 +35,10 @@ export default function Home() {
             <RideSearchForm />
           </div>
         </div>
+      </section>
+
+      <section className="container mx-auto px-4">
+        <AdCarousel />
       </section>
 
       <section className="container mx-auto px-4">
