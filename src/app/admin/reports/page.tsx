@@ -1,18 +1,20 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, doc, updateDoc, serverTimestamp, query, where } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, serverTimestamp, query, where, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, Flag, AlertTriangle, CheckCircle, Trash2 } from "lucide-react";
+import { MoreHorizontal, Flag, AlertTriangle, CheckCircle, Trash2, UserX } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { format } from 'date-fns';
+import { DocumentData } from "firebase/firestore";
 
 type Report = {
   id: string;
@@ -46,9 +48,12 @@ export default function ReportsPage() {
     const { toast } = useToast();
 
     useEffect(() => {
-        let q = collection(db, "reports");
+        let q;
+        const reportsCollection = collection(db, "reports");
         if (filter !== 'All') {
-            q = query(q, where("status", "==", filter));
+            q = query(reportsCollection, where("status", "==", filter));
+        } else {
+            q = query(reportsCollection);
         }
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -77,6 +82,40 @@ export default function ReportsPage() {
             toast({ title: "Listing Suspended", description: `Listing ${listingId} has been suspended.`});
         } catch (error) {
              toast({ variant: 'destructive', title: "Failed to Suspend Listing" });
+        }
+    };
+
+    const handleSuspendOwner = async (listingId: string) => {
+        try {
+            // 1. Get the listing to find the owner
+            const listingRef = doc(db, 'listings', listingId);
+            const listingSnap = await getDoc(listingRef);
+
+            if (!listingSnap.exists()) {
+                toast({ variant: 'destructive', title: 'Listing not found.' });
+                return;
+            }
+
+            const listingData = listingSnap.data() as DocumentData;
+            const ownerId = listingData.ownerId;
+
+            if (!ownerId) {
+                toast({ variant: 'destructive', title: 'No owner assigned to this listing.' });
+                return;
+            }
+
+            // 2. Update the owner's status
+            const ownerRef = doc(db, 'rideOwners', ownerId);
+            await updateDoc(ownerRef, { status: 'Suspended' });
+
+            toast({
+                title: 'Owner Suspended',
+                description: `The owner has been successfully suspended.`,
+            });
+            
+        } catch (error) {
+            console.error("Error suspending owner: ", error);
+            toast({ variant: 'destructive', title: 'Failed to Suspend Owner' });
         }
     };
 
@@ -156,6 +195,9 @@ export default function ReportsPage() {
                                                 <DropdownMenuItem onSelect={() => handleSuspendListing(report.listingId)}>
                                                     <AlertTriangle className="mr-2" /> Suspend Listing
                                                 </DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => handleSuspendOwner(report.listingId)}>
+                                                    <UserX className="mr-2" /> Suspend Owner
+                                                </DropdownMenuItem>
                                                 <DropdownMenuItem disabled>
                                                     <Trash2 className="mr-2" /> Delete Report
                                                 </DropdownMenuItem>
@@ -172,3 +214,4 @@ export default function ReportsPage() {
         </div>
     );
 }
+    
