@@ -6,7 +6,7 @@ import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimest
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Trash2, Megaphone, Loader2 } from "lucide-react";
+import { PlusCircle, Trash2, Megaphone, Loader2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import Image from "next/image";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
 
 type Ad = {
   id: string;
@@ -28,6 +30,7 @@ export default function ManageAdsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [currentAd, setCurrentAd] = useState<Ad | null>(null);
     
     const [description, setDescription] = useState('');
     const [imageUrl, setImageUrl] = useState('');
@@ -43,14 +46,31 @@ export default function ManageAdsPage() {
         });
         return () => unsubscribe();
     }, []);
+    
+    useEffect(() => {
+        if (currentAd) {
+            setDescription(currentAd.description);
+            setImageUrl(currentAd.imageUrl);
+            setLink(currentAd.link || '');
+        } else {
+            clearForm();
+        }
+    }, [currentAd]);
+
 
     const clearForm = () => {
         setDescription('');
         setImageUrl('');
         setLink('');
+        setCurrentAd(null);
     }
 
-    const handleAddAd = async (e: React.FormEvent) => {
+    const openDialog = (ad: Ad | null) => {
+        setCurrentAd(ad);
+        setIsDialogOpen(true);
+    }
+
+    const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!imageUrl || !description) {
             toast({ variant: "destructive", title: "Image URL and description are required." });
@@ -58,19 +78,29 @@ export default function ManageAdsPage() {
         }
         setIsSubmitting(true);
         try {
-            await addDoc(collection(db, "advertisements"), {
-                imageUrl,
-                description,
-                link,
-                isActive: true,
-                createdAt: serverTimestamp(),
-            });
-            toast({ title: "Advertisement Added" });
+            if (currentAd) { // Editing existing ad
+                const adRef = doc(db, 'advertisements', currentAd.id);
+                await updateDoc(adRef, {
+                    imageUrl,
+                    description,
+                    link,
+                });
+                toast({ title: "Advertisement Updated" });
+            } else { // Adding new ad
+                await addDoc(collection(db, "advertisements"), {
+                    imageUrl,
+                    description,
+                    link,
+                    isActive: true,
+                    createdAt: serverTimestamp(),
+                });
+                toast({ title: "Advertisement Added" });
+            }
             setIsDialogOpen(false);
             clearForm();
         } catch (error) {
-            console.error("Error adding ad:", error);
-            toast({ variant: "destructive", title: "Failed to add advertisement." });
+            console.error("Error saving ad:", error);
+            toast({ variant: "destructive", title: "Failed to save advertisement." });
         } finally {
             setIsSubmitting(false);
         }
@@ -102,7 +132,7 @@ export default function ManageAdsPage() {
         <div className="flex flex-col gap-8">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold font-headline">Manage Advertisements</h1>
-                <Button onClick={() => setIsDialogOpen(true)}>
+                <Button onClick={() => openDialog(null)}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add New Ad
                 </Button>
@@ -127,30 +157,45 @@ export default function ManageAdsPage() {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {ads.map((ad) => (
-                                <Card key={ad.id} className="overflow-hidden">
+                                <Card key={ad.id} className="overflow-hidden flex flex-col">
                                     <div className="relative aspect-video">
                                         <Image src={ad.imageUrl} alt={ad.description} fill className="object-cover" />
                                     </div>
-                                    <CardContent className="p-4">
-                                        <p className="text-sm text-muted-foreground truncate">{ad.description}</p>
+                                    <CardContent className="p-4 flex-grow">
+                                        <p className="text-sm font-medium text-foreground truncate">{ad.description}</p>
                                         {ad.link && <a href={ad.link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline truncate block">{ad.link}</a>}
                                     </CardContent>
-                                    <div className="p-4 bg-muted/50 flex items-center justify-between">
+                                    <div className="p-4 bg-muted/50 flex items-center justify-between mt-auto">
                                         <div className="flex items-center gap-2">
                                             <Switch
                                                 checked={ad.isActive}
                                                 onCheckedChange={() => handleToggleStatus(ad)}
                                                 aria-label="Toggle ad status"
                                             />
-                                            <Label htmlFor="status">{ad.isActive ? 'Active' : 'Inactive'}</Label>
+                                            <Label htmlFor="status" className="text-sm">{ad.isActive ? 'Active' : 'Inactive'}</Label>
                                         </div>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="text-destructive">
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
+                                         <AlertDialog>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onSelect={() => openDialog(ad)}>
+                                                        <Edit className="mr-2 h-4 w-4" />
+                                                        Edit
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <AlertDialogTrigger asChild>
+                                                        <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </AlertDialogTrigger>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                             <AlertDialogContent>
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                     <AlertDialogDescription>This will permanently delete the ad.</AlertDialogDescription>
@@ -169,15 +214,15 @@ export default function ManageAdsPage() {
                 </CardContent>
             </Card>
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { setIsDialogOpen(isOpen); if (!isOpen) clearForm(); }}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Add New Advertisement</DialogTitle>
+                        <DialogTitle>{currentAd ? 'Edit' : 'Add New'} Advertisement</DialogTitle>
                         <DialogDescription>
-                           Upload an image and provide details for the new ad.
+                           Provide details for the advertisement.
                         </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleAddAd} className="space-y-4">
+                    <form onSubmit={handleFormSubmit} className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="imageUrl">Image URL</Label>
                             <Input id="imageUrl" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://picsum.photos/seed/ad1/600/400" required />
