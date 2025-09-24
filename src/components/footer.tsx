@@ -1,5 +1,8 @@
+'use client';
+
 import Link from 'next/link';
 import { Car, LogIn } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 
 const Logo = () => (
   <Link href="/" className="flex items-center gap-2" prefetch={false}>
@@ -9,6 +12,13 @@ const Logo = () => (
 );
 
 export function Footer() {
+  const pathname = usePathname();
+
+  // Don't render footer for admin pages
+  if (pathname.startsWith('/admin')) {
+    return null;
+  }
+
   return (
     <footer className="bg-card border-t mt-16">
       <div className="container mx-auto px-4 py-8">

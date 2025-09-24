@@ -51,7 +51,7 @@ const prompt = ai.definePrompt({
 Suggest alternative pickup locations that are near the specified pickup location.
 Suggest alternative destinations that would also satisfy the user's intent, even if they are not exactly the same as the specified destination.
 
-Return your output as a json object.`,,
+Return your output as a json object.`,
 });
 
 const expandRideSearchResultsFlow = ai.defineFlow(
