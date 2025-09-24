@@ -11,7 +11,7 @@ import { PlusCircle, Trash2, Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { writeBatch, doc, collection } from "firebase/firestore";
-import { seedableOwners, seedableListings } from "@/lib/data";
+import { seedableOwners, seedableListings, seedableNotifications } from "@/lib/data";
 
 const rideCategories = ['Bike', 'Keke', 'Car', 'Bus', 'VIP'];
 const locations = ['Lagos', 'Abuja', 'Port Harcourt', 'Kano', 'Ibadan'];
@@ -37,6 +37,13 @@ export default function SettingsPage() {
                 const docRef = doc(listingsCollection, listing.id);
                 batch.set(docRef, listing);
             });
+
+            const notificationsCollection = collection(db, 'notifications');
+            seedableNotifications.forEach(notification => {
+                const docRef = doc(notificationsCollection, notification.id);
+                batch.set(docRef, notification);
+            });
+
 
             await batch.commit();
 

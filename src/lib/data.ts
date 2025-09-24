@@ -1,5 +1,6 @@
 
 import type { Ride } from './types';
+import { Timestamp } from 'firebase/firestore';
 
 const NIGERIAN_CITIES = [
   'Lagos',
@@ -232,6 +233,13 @@ export const seedableListings = [
   { id: 'L003', type: 'Bus', model: 'Ford Transit', price: 5000, owner: 'Go-Together', status: 'Pending' },
   { id: 'L004', type: 'Keke', model: 'Bajaj RE', price: 2000, owner: 'Chioma Nwosu', status: 'Approved' },
   { id: 'L005', type: 'Bike', model: 'Gokada Bike', price: 1500, owner: 'Safe Journey Ltd.', status: 'Expired' },
+];
+
+export const seedableNotifications = [
+    { id: 'N001', message: "New subscription payment: ₦10,000 (Weekly)", createdAt: Timestamp.now() },
+    { id: 'N002', message: "New ride owner 'Bayo Adekunle' pending approval.", createdAt: Timestamp.now() },
+    { id: 'N003', message: "New listing 'Toyota Camry 2022' pending approval.", createdAt: Timestamp.now() },
+    { id: 'N004', message: "Subscription for 'City Movers Ltd.' has expired.", createdAt: Timestamp.now() },
 ];
 
 
