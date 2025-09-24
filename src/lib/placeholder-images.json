@@ -1,3 +1,82 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero",
+      "description": "A scenic road winding through mountains at sunset",
+      "imageUrl": "https://images.unsplash.com/photo-1634321736195-740de17350fe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxzY2VuaWMlMjByb2FkJTIwc3Vuc2V0fGVufDB8fHx8MTc1ODcyNzgwNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "scenic road sunset"
+    },
+    {
+      "id": "sedan-1",
+      "description": "A modern white sedan on a city street",
+      "imageUrl": "https://images.unsplash.com/photo-1669254382128-9fdc409000d5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHx3aGl0ZSUyMHNlZGFufGVufDB8fHx8MTc1ODcwNDgyNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "white sedan"
+    },
+    {
+      "id": "suv-1",
+      "description": "A black SUV parked in a forest",
+      "imageUrl": "https://images.unsplash.com/photo-1736508835016-f3b85ea09dcb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxibGFjayUyMHN1dnxlbnwwfHx8fDE3NTg3MDc1Nzd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "black suv"
+    },
+    {
+      "id": "luxury-1",
+      "description": "A sleek silver luxury car",
+      "imageUrl": "https://images.unsplash.com/photo-1750097297099-ca53d05b2495?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxzaWx2ZXIlMjBjYXJ8ZW58MHx8fHwxNzU4NzAwOTAwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "silver car"
+    },
+    {
+      "id": "van-1",
+      "description": "A white van for shared rides",
+      "imageUrl": "https://images.unsplash.com/photo-1694802180731-1ee2ea37692a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx3aGl0ZSUyMHZhbnxlbnwwfHx8fDE3NTg2OTczMDV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "white van"
+    },
+    {
+      "id": "sedan-2",
+      "description": "A blue sedan driving on a highway",
+      "imageUrl": "https://images.unsplash.com/photo-1694658073846-bcf14ab05945?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxibHVlJTIwc2VkYW58ZW58MHx8fHwxNzU4NjkyMTIwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "blue sedan"
+    },
+    {
+      "id": "suv-2",
+      "description": "A red SUV on a mountain road",
+      "imageUrl": "https://images.unsplash.com/photo-1618458581205-e17687de0f16?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxyZWQlMjBzdXZ8ZW58MHx8fHwxNzU4NzI3ODA1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "red suv"
+    },
+    {
+      "id": "luxury-2",
+      "description": "A black convertible luxury car",
+      "imageUrl": "https://images.unsplash.com/photo-1707406767872-071ee811ccdd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxibGFjayUyMGNvbnZlcnRpYmxlfGVufDB8fHx8MTc1ODcyNzgwN3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "black convertible"
+    },
+    {
+      "id": "shared-1",
+      "description": "A minibus for shared transport",
+      "imageUrl": "https://images.unsplash.com/photo-1551735053-86e1d9de9e4c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtaW5pYnVzJTIwY2l0eXxlbnwwfHx8fDE3NTg3Mjc4MDN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "minibus city"
+    },
+    {
+      "id": "sedan-3",
+      "description": "A grey sedan parked downtown",
+      "imageUrl": "https://images.unsplash.com/photo-1682408137483-3bf36e4200db?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxncmV5JTIwc2VkYW58ZW58MHx8fHwxNzU4NjE3Mzk5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "grey sedan"
+    },
+    {
+      "id": "suv-3",
+      "description": "A family SUV driving by the coast",
+      "imageUrl": "https://images.unsplash.com/photo-1525466478886-6a795dbdaa64?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxzdXYlMjBjb2FzdHxlbnwwfHx8fDE3NTg3Mjc4MDN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "suv coast"
+    },
+    {
+      "id": "luxury-3",
+      "description": "A classic luxury car",
+      "imageUrl": "https://images.unsplash.com/photo-1621971231299-d2b69f9b3fec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjbGFzc2ljJTIwY2FyfGVufDB8fHx8MTc1ODcyNzgwNHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "classic car"
+    },
+    {
+      "id": "shared-2",
+      "description": "A shuttle bus in a city",
+      "imageUrl": "https://images.unsplash.com/photo-1738050028200-4077e6b68d2a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxzaHV0dGxlJTIwYnVzfGVufDB8fHx8MTc1ODY1MzY0MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "shuttle bus"
+    }
+  ]
 }
