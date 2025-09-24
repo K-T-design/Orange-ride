@@ -285,7 +285,7 @@ export default function ReportsPage() {
                            <div className="space-y-4">
                                <h4 className="font-semibold">Internal Notes</h4>
                                <div className="space-y-3 max-h-48 overflow-y-auto pr-4">
-                                   {selectedReport.notes && selectedReport.notes.length > 0 ? (
+                                   {Array.isArray(selectedReport.notes) && selectedReport.notes.length > 0 ? (
                                        selectedReport.notes.map((note, index) => (
                                            <div key={index} className="flex gap-3">
                                                 <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
@@ -330,5 +330,7 @@ export default function ReportsPage() {
         </div>
     );
 }
+
+    
 
     
