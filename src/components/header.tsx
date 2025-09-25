@@ -58,15 +58,19 @@ export function Header() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Simplified Admin check for this demo
+        // Defined admin emails
         const adminEmails = ['admin@example.com', 'superadmin@example.com'];
+        
+        // 1. Check for Admin role FIRST
         if (adminEmails.includes(user.email ?? '')) {
             setUserState({ loggedIn: true, role: 'Admin', initials: 'A' });
-            return;
+            return; // Stop further checks if user is an admin
         }
         
+        // 2. If not an admin, check Firestore for Customer/Ride Owner role
         const userDocRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
+        
         let role: UserState['role'] = null;
         let initials = 'U';
         let avatarUrl = undefined;
@@ -83,7 +87,9 @@ export function Header() {
         }
 
         setUserState({ loggedIn: true, role, initials, avatarUrl });
+
       } else {
+        // 3. Handle logged-out state
         setUserState({ loggedIn: false, role: null, initials: 'G' });
       }
     });
@@ -180,17 +186,21 @@ export function Header() {
                 <>
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {userState.role !== 'Admin' && (
-                    <DropdownMenuItem asChild>
-                      <Link href={getDashboardUrl()}><LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard</Link>
+                  {userState.role === 'Admin' ? (
+                     <DropdownMenuItem asChild>
+                      <Link href="/admin"><LayoutDashboard className="mr-2 h-4 w-4" /> Admin Dashboard</Link>
                     </DropdownMenuItem>
+                  ) : (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link href={getDashboardUrl()}><LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={userState.role === 'Ride Owner' ? '/owner/profile' : '/customer/profile'}><User className="mr-2 h-4 w-4" /> Profile</Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
-                   {userState.role !== 'Admin' && (
-                    <DropdownMenuItem asChild>
-                      <Link href={userState.role === 'Ride Owner' ? '/owner/profile' : '/customer/profile'}><User className="mr-2 h-4 w-4" /> Profile</Link>
-                    </DropdownMenuItem>
-                  )}
-                  {userState.role !== 'Admin' && <DropdownMenuSeparator />}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout
