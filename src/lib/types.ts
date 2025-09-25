@@ -1,3 +1,6 @@
+
+import type { Timestamp } from 'firebase/firestore';
+
 export type Ride = {
   id: string;
   name: string;
@@ -16,4 +19,5 @@ export type Ride = {
   image: string;
   isPromoted: boolean;
   schedule: string;
+  savedAt?: Timestamp;
 };
