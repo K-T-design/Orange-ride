@@ -1,3 +1,4 @@
+
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
@@ -7,7 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Car, LayoutDashboard, User, LogOut, Loader2, CreditCard, PlusCircle, List } from 'lucide-react';
+import { Car, LayoutDashboard, User, LogOut, Loader2, CreditCard, PlusCircle, List, Bell } from 'lucide-react';
 import Link from 'next/link';
 
 const ownerNavLinks = [
@@ -15,6 +16,7 @@ const ownerNavLinks = [
   { href: '/owner/listings', label: 'My Listings', icon: List },
   { href: '/owner/listings/add', label: 'Add New Listing', icon: PlusCircle },
   { href: '/owner/subscriptions', label: 'Subscription', icon: CreditCard },
+  { href: '/owner/notifications', label: 'Notifications', icon: Bell },
   { href: '/owner/profile', label: 'My Profile', icon: User },
 ];
 
