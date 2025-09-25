@@ -114,7 +114,7 @@ export function RideSearchForm() {
                 <FormLabel className="sr-only">Ride Type</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
-                    <SelectTrigger className="h-12 text-base md:rounded-r-none md:rounded-l-none border-0">
+                    <SelectTrigger className="h-12 text-base text-foreground md:rounded-r-none md:rounded-l-none border-0">
                       <SelectValue placeholder="Ride Type" />
                     </SelectTrigger>
                   </FormControl>
