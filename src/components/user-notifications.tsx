@@ -102,6 +102,19 @@ export function UserNotifications() {
     )
   }
 
+  if (!user) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Access Denied</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p>Please <Link href="/login" className="text-primary underline">log in</Link> to view your notifications.</p>
+            </CardContent>
+        </Card>
+    )
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">

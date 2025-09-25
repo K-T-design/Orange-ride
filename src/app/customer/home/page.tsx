@@ -2,7 +2,7 @@
 import { RideSearchForm } from '@/components/ride-search-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { History, Star, User } from 'lucide-react';
+import { History, Star, User, Bell } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CustomerHomePage() {
@@ -18,7 +18,7 @@ export default function CustomerHomePage() {
            <RideSearchForm />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
            <Card>
              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                <CardTitle className="text-sm font-medium">
@@ -64,6 +64,22 @@ export default function CustomerHomePage() {
                </p>
                 <Button variant="outline" size="sm" className="mt-4" asChild>
                    <Link href="/saved-rides">View Saved</Link>
+               </Button>
+             </CardContent>
+           </Card>
+            <Card>
+             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+               <CardTitle className="text-sm font-medium">
+                 Notifications
+               </CardTitle>
+               <Bell className="h-4 w-4 text-muted-foreground" />
+             </CardHeader>
+             <CardContent>
+               <p className="text-xs text-muted-foreground">
+                 Check for updates and announcements.
+               </p>
+                <Button variant="outline" size="sm" className="mt-4" asChild>
+                   <Link href="/customer/notifications">View Notifications</Link>
                </Button>
              </CardContent>
            </Card>
