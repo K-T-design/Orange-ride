@@ -42,7 +42,9 @@ async function getFeaturedRides(): Promise<Ride[]> {
     return rides;
   } catch (error) {
     console.error("Error fetching featured rides: ", error);
-    return []; // Return empty array on error
+    // This error might happen if the composite index is not created in Firestore.
+    // As a fallback, just return an empty array.
+    return [];
   }
 }
 
@@ -85,7 +87,7 @@ export default async function Home() {
       {featuredRides.length > 0 && (
         <section className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-8 font-headline">Featured Rides</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {featuredRides.map((ride, index) => (
               <div
                 key={ride.id}
