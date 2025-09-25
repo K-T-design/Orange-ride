@@ -8,7 +8,7 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, getDoc
 import { useToast } from '@/hooks/use-toast';
 import { ListingForm } from '@/components/owner/listing-form';
 import type { ListingFormData } from '@/components/owner/listing-form';
-import { planLimits, rideOwners, vehicleTypes } from '@/lib/data';
+import { planLimits } from '@/lib/data';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from '@/components/ui/button';
@@ -156,6 +156,7 @@ export default function AddListingPage() {
 
   const canCreateListing = () => {
       if (isLoading || !ownerInfo) return false;
+      if (ownerInfo.status !== 'Active') return false;
       if (!ownerInfo.plan || ownerInfo.plan === 'None') return false;
       const limit = planLimits[ownerInfo.plan];
       if (limit === Infinity) return true;
@@ -177,7 +178,7 @@ export default function AddListingPage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -192,9 +193,10 @@ export default function AddListingPage() {
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Cannot Add Listing</AlertTitle>
                 <AlertDescription>
-                    {ownerInfo?.plan === 'None' ? "You do not have an active subscription." : "You have reached the listing limit for your current plan."}
-                    &nbsp;Please <Button variant="link" asChild className="p-0 h-auto"><Link href="/owner/subscriptions">upgrade your plan</Link></Button> to add more vehicles.
-                </AmazonS3FullAccess
+                    {ownerInfo?.status !== 'Active' ? `Your account is currently ${ownerInfo?.status}. You must be active to add a listing.` :
+                    (ownerInfo?.plan === 'None' ? "You do not have an active subscription." : "You have reached the listing limit for your current plan.")}
+                    &nbsp;Please <Button variant="link" asChild className="p-0 h-auto"><Link href="/owner/subscriptions">upgrade your plan</Link></Button> or contact support.
+                </AlertDescription>
             </Alert>
         )}
 
