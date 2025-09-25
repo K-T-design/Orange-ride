@@ -139,7 +139,7 @@ export default function CustomerDashboardPage() {
           <p className="text-lg text-muted-foreground mt-2">Manage your rides and profile.</p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
            <Card>
              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                <CardTitle className="text-sm font-medium">My Profile</CardTitle>
@@ -149,18 +149,6 @@ export default function CustomerDashboardPage() {
                <p className="text-xs text-muted-foreground">Update your contact details and password.</p>
                <Button variant="outline" size="sm" className="mt-4" asChild>
                    <Link href="/profile">Go to Profile</Link>
-               </Button>
-             </CardContent>
-           </Card>
-           <Card>
-             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-               <CardTitle className="text-sm font-medium">Booking History</CardTitle>
-               <History className="h-4 w-4 text-muted-foreground" />
-             </CardHeader>
-             <CardContent>
-               <p className="text-xs text-muted-foreground">View your past and current ride bookings.</p>
-                <Button variant="outline" size="sm" className="mt-4" asChild>
-                   <Link href="/my-rides">View History</Link>
                </Button>
              </CardContent>
            </Card>
