@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { collection, getDocs, writeBatch, serverTimestamp, query, where } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, serverTimestamp, query, where, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,6 +49,8 @@ export default function NotificationsPage() {
           usersQuery = query(usersCollectionRef, where('role', '==', 'Ride Owner'));
           break;
         case 'customers':
+          // Assuming customers might not have a role field or it's different.
+          // For this example, let's assume 'Customer' role exists.
           usersQuery = query(usersCollectionRef, where('role', '==', 'Customer'));
           break;
         case 'all':
@@ -76,12 +77,13 @@ export default function NotificationsPage() {
         link: values.link || null,
         read: false,
         createdAt: serverTimestamp(),
-        eventType: 'announcement',
+        eventType: 'announcement', // As per prompt, this is an example eventType
       };
 
       querySnapshot.forEach((userDoc) => {
+        // Create a notification in each user's subcollection
         const userNotificationsRef = collection(db, 'users', userDoc.id, 'notifications');
-        const newNotifRef = doc(userNotificationsRef);
+        const newNotifRef = doc(userNotificationsRef); // Firestore will generate an ID
         batch.set(newNotifRef, notificationData);
       });
 
