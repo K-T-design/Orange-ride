@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db, storage } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
@@ -19,13 +18,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, UploadCloud, User as UserIcon, Shield, Star, Bell, Trash2 } from 'lucide-react';
+import { Loader2, UploadCloud, User as UserIcon, Shield, Star, Bell, Trash2, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { UserNotifications } from '@/components/user-notifications';
 import type { Ride } from '@/lib/types';
 import { RideCard } from '@/components/ride-card';
-import { updatePassword } from 'firebase/auth';
+import { updatePassword, deleteUser } from 'firebase/auth';
+import { Separator } from '@/components/ui/separator';
 
 
 const profileFormSchema = z.object({
@@ -165,7 +165,7 @@ export default function CustomerProfilePage() {
           passwordForm.reset();
       } catch (error: any) {
           console.error("Error updating password:", error);
-          toast({ variant: 'destructive', title: "Password Update Failed", description: "Please re-login and try again." });
+          toast({ variant: 'destructive', title: "Password Update Failed", description: "This is a sensitive operation. Please re-login and try again." });
       } finally {
           setIsSubmittingPassword(false);
       }
@@ -187,6 +187,35 @@ export default function CustomerProfilePage() {
           console.error("Error removing saved ride: ", error);
           toast({ variant: "destructive", title: "Failed to remove ride." });
       }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+
+    try {
+      const batch = writeBatch(db);
+
+      // 1. Delete user's saved rides
+      const savedRidesQuery = query(collection(db, 'savedRides'), where('userId', '==', user.uid));
+      const savedRidesSnapshot = await getDocs(savedRidesQuery);
+      savedRidesSnapshot.forEach(doc => batch.delete(doc.ref));
+
+      // 2. Delete user document from 'users' collection
+      const userDocRef = doc(db, 'users', user.uid);
+      batch.delete(userDocRef);
+      
+      // 3. Commit batch delete
+      await batch.commit();
+      
+      // 4. Delete user from Firebase Auth
+      await deleteUser(user);
+
+      toast({ title: 'Account Deleted', description: 'Your account and all associated data have been removed.' });
+      router.push('/'); // Redirect to homepage
+    } catch (error) {
+        console.error('Error deleting account:', error);
+        toast({ variant: 'destructive', title: 'Account Deletion Failed', description: 'This is a sensitive operation. Please re-login and try again.'});
+    }
   };
 
   if (isLoading || loadingAuth) {
@@ -273,38 +302,76 @@ export default function CustomerProfilePage() {
             </TabsContent>
 
             <TabsContent value="security" className="mt-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Password Management</CardTitle>
-                        <CardDescription>Change your password here. It's recommended to use a strong, unique password.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                         <Form {...passwordForm}>
-                            <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4 max-w-md">
-                                <FormField control={passwordForm.control} name="newPassword" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>New Password</FormLabel>
-                                        <FormControl><Input type="password" {...field} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={passwordForm.control} name="confirmPassword" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Confirm New Password</FormLabel>
-                                        <FormControl><Input type="password" {...field} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <div className="flex justify-start">
-                                    <Button type="submit" disabled={isSubmittingPassword}>
-                                        {isSubmittingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Update Password
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Password Management</CardTitle>
+                            <CardDescription>Change your password here. It's recommended to use a strong, unique password.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Form {...passwordForm}>
+                                <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4 max-w-md">
+                                    <FormField control={passwordForm.control} name="newPassword" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>New Password</FormLabel>
+                                            <FormControl><Input type="password" {...field} /></FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                    <FormField control={passwordForm.control} name="confirmPassword" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Confirm New Password</FormLabel>
+                                            <FormControl><Input type="password" {...field} /></FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                    <div className="flex justify-start">
+                                        <Button type="submit" disabled={isSubmittingPassword}>
+                                            {isSubmittingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            Update Password
+                                        </Button>
+                                    </div>
+                                </form>
+                            </Form>
+                        </CardContent>
+                    </Card>
+                    
+                    <Card className="border-destructive">
+                        <CardHeader>
+                            <CardTitle className="text-destructive">Delete Account</CardTitle>
+                            <CardDescription>
+                                Permanently delete your account and all of your content. This action is not reversible.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive">
+                                        <AlertTriangle className="mr-2 h-4 w-4" />
+                                        Delete My Account
                                     </Button>
-                                </div>
-                            </form>
-                         </Form>
-                    </CardContent>
-                </Card>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete your account, saved rides, and remove your data from our servers.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        className="bg-destructive hover:bg-destructive/90"
+                                        onClick={handleDeleteAccount}
+                                    >
+                                        Yes, delete my account
+                                    </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </CardContent>
+                    </Card>
+                </div>
             </TabsContent>
 
             <TabsContent value="saved" className="mt-6">
@@ -344,4 +411,3 @@ export default function CustomerProfilePage() {
     </div>
   );
 }
-
