@@ -213,7 +213,6 @@ function LoginForm() {
                 <Input
                   type="email"
                   placeholder="you@example.com"
-                  className="bg-white border-black/20 focus:ring-black"
                   {...field}
                   disabled={isLoading}
                 />
@@ -232,7 +231,6 @@ function LoginForm() {
                 <Input
                   type="password"
                   placeholder="••••••••"
-                  className="bg-white border-black/20 focus:ring-black"
                   {...field}
                   disabled={isLoading}
                 />
@@ -249,7 +247,6 @@ function LoginForm() {
               <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                 <FormControl>
                   <Checkbox
-                    className="border-black/40"
                     checked={field.value}
                     onCheckedChange={field.onChange}
                   />
@@ -264,14 +261,14 @@ function LoginForm() {
             variant="link"
             type="button"
             onClick={handlePasswordReset}
-            className="px-0 text-sm h-auto font-normal text-black hover:underline"
+            className="px-0 text-sm h-auto font-normal text-muted-foreground hover:text-primary"
           >
             Forgot Password?
           </Button>
         </div>
         <Button
           type="submit"
-          className="w-full bg-black text-white hover:bg-black/80"
+          className="w-full"
           disabled={isLoading}
         >
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -358,9 +355,7 @@ function SignupForm() {
         title: 'Account Created!',
         description: 'Your account has been successfully created. Please sign in.',
       });
-      // Switch to login tab after successful signup
-      // This part is tricky as we need to communicate between components.
-      // For now, we will just show a toast. A global state manager would be better.
+      // In a real app, you might want to switch to the login tab automatically
     } catch (error: any) {
       let errorMessage = 'An unknown error occurred. Check your internet connection.';
       if (error.code === 'auth/email-already-in-use') {
@@ -378,16 +373,14 @@ function SignupForm() {
 
   return (
     <Tabs value={role} onValueChange={handleTabChange} className="w-full">
-      <TabsList className="grid w-full grid-cols-2 bg-gray-200">
+      <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger
           value="Customer"
-          className="data-[state=active]:bg-black data-[state=active]:text-white"
         >
           I'm a Customer
         </TabsTrigger>
         <TabsTrigger
           value="Ride Owner"
-          className="data-[state=active]:bg-black data-[state=active]:text-white"
         >
           I'm a Ride Owner
         </TabsTrigger>
@@ -403,7 +396,7 @@ function SignupForm() {
                   {role === 'Customer' ? 'Full Name' : 'Contact Person Full Name'}
                 </FormLabel>
                 <FormControl>
-                  <Input placeholder="John Doe" {...field} className="bg-white border-black/20 focus:ring-black" />
+                  <Input placeholder="John Doe" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -422,7 +415,6 @@ function SignupForm() {
                       <Input
                         placeholder="e.g., City Express"
                         {...field}
-                        className="bg-white border-black/20 focus:ring-black"
                       />
                     </FormControl>
                     <FormMessage />
@@ -437,7 +429,7 @@ function SignupForm() {
                     <FormLabel>Business Type</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger className="bg-white border-black/20 focus:ring-black">
+                        <SelectTrigger>
                           <SelectValue placeholder="Select your business type" />
                         </SelectTrigger>
                       </FormControl>
@@ -471,7 +463,6 @@ function SignupForm() {
                     type="email"
                     placeholder="you@example.com"
                     {...field}
-                    className="bg-white border-black/20 focus:ring-black"
                   />
                 </FormControl>
                 <FormMessage />
@@ -488,7 +479,6 @@ function SignupForm() {
                   <Input
                     placeholder="2348012345678"
                     {...field}
-                    className="bg-white border-black/20 focus:ring-black"
                   />
                 </FormControl>
                 <FormMessage />
@@ -506,7 +496,6 @@ function SignupForm() {
                     type="password"
                     placeholder="••••••••"
                     {...field}
-                    className="bg-white border-black/20 focus:ring-black"
                   />
                 </FormControl>
                 <FormMessage />
@@ -524,7 +513,6 @@ function SignupForm() {
                     type="password"
                     placeholder="••••••••"
                     {...field}
-                    className="bg-white border-black/20 focus:ring-black"
                   />
                 </FormControl>
                 <FormMessage />
@@ -536,17 +524,16 @@ function SignupForm() {
             control={form.control}
             name="terms"
             render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-black/20 p-4">
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                 <FormControl>
                   <Checkbox
-                    className="border-black/40"
                     checked={field.value}
                     onCheckedChange={field.onChange}
                   />
                 </FormControl>
                 <div className="space-y-1 leading-none">
                   <FormLabel className="font-normal">Accept terms and conditions</FormLabel>
-                  <p className="text-sm text-black/60">
+                  <p className="text-sm text-muted-foreground">
                     You agree to our Terms of Service and Privacy Policy.
                   </p>
                   <FormMessage />
@@ -557,7 +544,7 @@ function SignupForm() {
 
           <Button
             type="submit"
-            className="w-full bg-black text-white hover:bg-black/80"
+            className="w-full"
             disabled={isLoading}
           >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -574,15 +561,15 @@ export default function AuthPage() {
   const [activeTab, setActiveTab] = useState('signin');
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-4 py-12 text-black">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
       <div className="mx-auto w-full max-w-md">
         <div className="flex justify-center mb-6">
-          <Link href="/" className="flex items-center gap-2 text-black">
-            <Car className="h-8 w-8 text-black" />
+          <Link href="/" className="flex items-center gap-2">
+            <Car className="h-8 w-8 text-primary" />
             <span className="text-2xl font-bold font-headline">Orange Rides</span>
           </Link>
         </div>
-        <Card className="bg-white border-black/20">
+        <Card>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
@@ -591,7 +578,7 @@ export default function AuthPage() {
             <TabsContent value="signin">
               <CardHeader className="text-center">
                 <CardTitle className="text-2xl font-headline">Welcome Back</CardTitle>
-                <CardDescription className="text-black/60">
+                <CardDescription>
                   Sign in to continue to your account
                 </CardDescription>
               </CardHeader>
@@ -602,7 +589,7 @@ export default function AuthPage() {
             <TabsContent value="signup">
               <CardHeader className="text-center">
                 <CardTitle className="text-2xl font-headline">Create an Account</CardTitle>
-                <CardDescription className="text-black/60">
+                <CardDescription>
                   Join our platform to find or list rides.
                 </CardDescription>
               </CardHeader>
@@ -616,5 +603,3 @@ export default function AuthPage() {
     </div>
   );
 }
-
-    
