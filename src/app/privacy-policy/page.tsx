@@ -27,52 +27,98 @@ export default function PrivacyPolicyPage() {
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold font-headline">Privacy Policy</h1>
         <p className="text-lg text-muted-foreground mt-2">
-          Last Updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+          Effective Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
       <Card>
         <CardContent className="p-6">
+            <p className="text-muted-foreground mb-4">At Orange Rides, your privacy is important to us. This Privacy Policy explains how we collect, use, store, and protect your personal information when you use our website and services. It applies to all users, including customers, ride owners, and visitors.</p>
             <Accordion type="single" collapsible className="w-full">
-                <PolicySection value="item-1" title="1. Introduction">
-                    <p>Welcome to Orange Rides. We are committed to protecting your personal information and your right to privacy. If you have any questions or concerns about our policy, or our practices with regards to your personal information, please contact us at <a href="mailto:orangemotorslogistics@gmail.com" className="text-primary hover:underline">orangemotorslogistics@gmail.com</a>.</p>
-                    <p>When you visit our website and use our services, you trust us with your personal information. We take your privacy very seriously. In this privacy policy, we seek to explain to you in the clearest way possible what information we collect, how we use it, and what rights you have in relation to it.</p>
+                <PolicySection value="item-1" title="1. Information We Collect">
+                    <h3 className="text-lg font-semibold text-foreground mb-2">Personal Information:</h3>
+                    <ul className="list-disc pl-5 space-y-1">
+                        <li>Full name, email address, phone number.</li>
+                        <li>Profile picture and account credentials (passwords).</li>
+                        <li>For ride owners: business name, business type, and contact person.</li>
+                    </ul>
+
+                    <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">Account Data:</h3>
+                     <ul className="list-disc pl-5 space-y-1">
+                        <li>Saved rides, notification preferences, and other account settings.</li>
+                    </ul>
+
+                    <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">Non-Personal Information:</h3>
+                     <ul className="list-disc pl-5 space-y-1">
+                        <li>IP address, browser type, device information, and usage data collected via analytics tools.</li>
+                    </ul>
+
+                    <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">Optional Data:</h3>
+                     <ul className="list-disc pl-5 space-y-1">
+                        <li>Messages sent via in-site notifications or support inquiries.</li>
+                    </ul>
                 </PolicySection>
                 
-                <PolicySection value="item-2" title="2. Information We Collect">
-                    <h3 className="text-lg font-semibold text-foreground mb-2">Personal Information You Disclose to Us</h3>
-                    <p>We collect personal information that you voluntarily provide to us when you register on the website, express an interest in obtaining information about us or our products and services, when you participate in activities on the website, or otherwise when you contact us.</p>
-                    <p>The personal information that we collect depends on the context of your interactions with us and the website, the choices you make, and the products and features you use. The personal information we collect may include the following: Full Name, Phone Number, Email Address, Business Name (for Ride Owners), and Password.</p>
-                    <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">Information Automatically Collected</h3>
-                    <p>We automatically collect certain information when you visit, use, or navigate the website. This information does not reveal your specific identity (like your name or contact information) but may include device and usage information, such as your IP address, browser and device characteristics, operating system, language preferences, referring URLs, device name, country, location, and other technical information.</p>
-                </PolicySection>
-
-                <PolicySection value="item-3" title="3. How We Use Your Information">
-                    <p>We use personal information collected via our website for a variety of business purposes described below. We process your personal information for these purposes in reliance on our legitimate business interests, in order to enter into or perform a contract with you, with your consent, and/or for compliance with our legal obligations.</p>
+                <PolicySection value="item-2" title="2. How We Use Your Information">
+                    <p>We use your information to:</p>
                     <ul className="list-disc pl-5 space-y-2">
-                        <li>To facilitate account creation and logon process.</li>
-                        <li>To post testimonials on our website with your consent.</li>
-                        <li>To send administrative information to you for business purposes, legal reasons, and/or contractual reasons.</li>
-                        <li>To manage user accounts. We may use your information for the purposes of managing your account and keeping it in working order.</li>
-                        <li>To deliver and facilitate delivery of services to the user.</li>
+                        <li>Provide, maintain, and improve the platform.</li>
+                        <li>Display ride listings and manage user accounts.</li>
+                        <li>Send notifications and updates relevant to your account.</li>
+                        <li>Analyze usage trends to enhance user experience.</li>
+                        <li>Comply with legal obligations or respond to lawful requests.</li>
                     </ul>
                 </PolicySection>
 
-                <PolicySection value="item-4" title="4. Sharing and Disclosure">
-                    <p>We only share information with your consent, to comply with laws, to provide you with services, to protect your rights, or to fulfill business obligations.</p>
-                    <p>Specifically, your contact information (phone, WhatsApp) is shared with a customer only when they explicitly choose to contact you about your ride listing.</p>
+                <PolicySection value="item-3" title="3. Sharing & Disclosure">
+                    <p>We respect your privacy and do not sell your personal information. We may share data in the following cases:</p>
+                    <ul className="list-disc pl-5 space-y-2">
+                        <li><strong>Service Providers:</strong> Trusted third parties assisting with hosting, analytics, or customer support (under confidentiality agreements).</li>
+                        <li><strong>Legal Obligations:</strong> When required by law or legal processes.</li>
+                        <li><strong>Public Listings:</strong> Ride owner business information displayed publicly (business name, contact number) is necessary for platform functionality.</li>
+                    </ul>
                 </PolicySection>
 
-                <PolicySection value="item-5" title="5. Data Security">
-                    <p>We have implemented appropriate technical and organizational security measures designed to protect the security of any personal information we process. However, despite our safeguards and efforts to secure your information, no electronic transmission over the Internet or information storage technology can be guaranteed to be 100% secure.</p>
+                <PolicySection value="item-4" title="4. Data Security">
+                    <p>We implement reasonable technical and organizational measures to protect your personal data, including encryption and secure storage. However, we cannot guarantee 100% security of information transmitted over the internet, and using our platform is at your own risk.</p>
                 </PolicySection>
 
-                <PolicySection value="item-6" title="6. Data Retention">
-                    <p>We will only keep your personal information for as long as it is necessary for the purposes set out in this privacy policy, unless a longer retention period is required or permitted by law (such as tax, accounting, or other legal requirements).</p>
+                <PolicySection value="item-5" title="5. Data Retention">
+                    <p>We retain your personal information only as long as necessary for account functionality, legal obligations, or legitimate business purposes.</p>
                 </PolicySection>
 
-                <PolicySection value="item-7" title="7. Your Rights">
-                    <p>You have the right to access, update, or delete your personal information at any time through your account's Profile page. You may review or change the information in your account or terminate your account by logging into your account settings and updating your user account.</p>
+                <PolicySection value="item-6" title="6. Users’ Rights">
+                     <p>You have the right to:</p>
+                    <ul className="list-disc pl-5 space-y-2">
+                        <li>Access and update your personal information.</li>
+                        <li>Delete your account and associated data (account deletion may be requested via your profile settings).</li>
+                        <li>Opt-out of marketing notifications.</li>
+                    </ul>
                 </PolicySection>
+                
+                 <PolicySection value="item-7" title="7. Cookies & Tracking">
+                    <p>We use cookies to manage sessions, improve user experience, and collect anonymous analytics data. You may disable cookies via your browser, but some features may not function correctly.</p>
+                </PolicySection>
+
+                <PolicySection value="item-8" title="8. Third-Party Links">
+                    <p>Our platform may contain links to external websites. We are not responsible for the privacy practices or content of third-party sites.</p>
+                </PolicySection>
+
+                <PolicySection value="item-9" title="9. Children's Privacy">
+                    <p>Orange Rides is not intended for children under the age of 13 (or the local age of consent). We do not knowingly collect personal data from children.</p>
+                </PolicySection>
+
+                <PolicySection value="item-10" title="10. Changes to This Privacy Policy">
+                    <p>We may update this Privacy Policy occasionally. Any changes will be reflected on this page with an updated effective date. We encourage you to review the policy regularly.</p>
+                </PolicySection>
+
+                <PolicySection value="item-11" title="11. Contact Us">
+                    <p>For questions, concerns, or requests regarding your privacy, you can contact us at:</p>
+                    <ul className="list-none space-y-1">
+                        <li><strong>Email:</strong> <a href="mailto:orangemotorslogistics@gmail.com" className="text-primary hover:underline">orangemotorslogistics@gmail.com</a></li>
+                        <li><strong>Website Contact Form:</strong> <Link href="/help" className="text-primary hover:underline">Help Center</Link></li>
+                    </ul>
+                </PolicySection>
+
             </Accordion>
         </CardContent>
       </Card>
