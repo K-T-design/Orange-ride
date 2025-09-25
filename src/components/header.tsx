@@ -58,18 +58,20 @@ export function Header() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        // Simplified Admin check for this demo
+        const adminEmails = ['admin@example.com', 'superadmin@example.com'];
+        if (adminEmails.includes(user.email ?? '')) {
+            setUserState({ loggedIn: true, role: 'Admin', initials: 'A' });
+            return;
+        }
+        
         const userDocRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
         let role: UserState['role'] = null;
         let initials = 'U';
         let avatarUrl = undefined;
-
-        // Simplified Admin check for this demo
-        const adminEmails = ['admin@example.com', 'superadmin@example.com'];
-        if (adminEmails.includes(user.email ?? '')) {
-            role = 'Admin';
-            initials = 'A';
-        } else if (userDoc.exists()) {
+        
+        if (userDoc.exists()) {
           const userData = userDoc.data();
           role = userData.role; // 'Customer' or 'Ride Owner'
           if (userData.fullName) {
