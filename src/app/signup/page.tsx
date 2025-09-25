@@ -2,284 +2,322 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import Link from 'next/link';
-import { Car, Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, addDoc, collection } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Car, Loader2 } from 'lucide-react';
 
-const passwordValidation = z.string().min(8, 'Password must be at least 8 characters.').refine(
-  (password) => /^(?=.*[0-9])(?=.*[!@#$%^&*])/.test(password),
-  'Password must contain at least one number and one special character.'
+const passwordValidation = z.string()
+  .min(8, 'Password must be at least 8 characters.')
+  .refine((password) => /[0-9]/.test(password), 'Password must contain at least one number.')
+  .refine((password) => /[!@#$%^&*]/.test(password), 'Password must contain at least one special character.');
+
+const baseSchema = z.object({
+  fullName: z.string().min(2, 'Full name must be at least 2 characters.'),
+  email: z.string().email('Please enter a valid email.'),
+  phone: z.string().min(10, 'Please enter a valid phone number.'),
+  password: passwordValidation,
+  confirmPassword: z.string(),
+});
+
+const customerSchema = baseSchema.extend({
+  role: z.literal('Customer'),
+});
+
+const rideOwnerSchema = baseSchema.extend({
+  role: z.literal('Ride Owner'),
+  businessName: z.string().min(2, 'Business name is required.'),
+  businessType: z.string({ required_error: 'Please select a business type.' }),
+});
+
+const formSchema = z.discriminatedUnion('role', [customerSchema, rideOwnerSchema]).refine(
+  (data) => data.password === data.confirmPassword,
+  {
+    message: "Passwords don't match.",
+    path: ['confirmPassword'],
+  }
 );
 
-const customerSchema = z.object({
-  role: z.literal('Customer'),
-  fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
-  email: z.string().email({ message: "Please enter a valid email." }),
-  phone: z.string().min(10, { message: "Please enter a valid phone number." }),
-  password: passwordValidation,
-  terms: z.boolean().refine((val) => val === true, { message: "You must accept the terms and conditions." }),
-});
-
-const rideOwnerSchema = z.object({
-  role: z.literal('Ride Owner'),
-  businessName: z.string().min(2, { message: "Business name must be at least 2 characters." }),
-  businessType: z.string({ required_error: "Please select a business type." }),
-  contactPerson: z.string().min(2, { message: "Contact person must be at least 2 characters." }),
-  email: z.string().email({ message: "Please enter a valid email." }),
-  phone: z.string().min(10, { message: "Please enter a valid phone number." }),
-  password: passwordValidation,
-  terms: z.boolean().refine((val) => val === true, { message: "You must accept the terms and conditions." }),
-});
-
-const formSchema = z.discriminatedUnion('role', [customerSchema, rideOwnerSchema]);
 type FormData = z.infer<typeof formSchema>;
 
 export default function SignUpPage() {
-  const [role, setRole] = useState<'Customer' | 'Ride Owner'>('Customer');
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
   const router = useRouter();
-
+  const { toast } = useToast();
+  
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       role: 'Customer',
-      terms: false,
+      fullName: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: '',
     },
   });
-  
-  const handleRoleChange = (newRole: 'Customer' | 'Ride Owner') => {
-    setRole(newRole);
-    form.setValue('role', newRole);
-    form.reset({ role: newRole, terms: form.getValues('terms') });
+
+  const handleTabChange = (value: string) => {
+    const newRole = value as 'Customer' | 'Ride Owner';
+    form.setValue('role', newRole, { shouldValidate: true });
+    
+    const currentValues = form.getValues();
+    const defaultValuesForRole = newRole === 'Customer' ? 
+      {...currentValues, role: 'Customer' } : 
+      {...currentValues, role: 'Ride Owner', businessName: '', businessType: ''};
+    
+    form.reset(defaultValuesForRole);
   };
 
   const onSubmit = async (values: FormData) => {
     setIsLoading(true);
     try {
-        // 1. Create user in Firebase Auth
-        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-        const user = userCredential.user;
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
 
-        // 2. Prepare user data for Firestore
-        let userData: any = {
-            uid: user.uid,
-            email: values.email,
-            phone: values.phone,
-            role: values.role,
-            createdAt: serverTimestamp(),
+      let userData: any = {
+        uid: user.uid,
+        email: values.email,
+        phone: values.phone,
+        fullName: values.fullName,
+        role: values.role,
+        createdAt: serverTimestamp(),
+      };
+
+      if (values.role === 'Ride Owner') {
+        userData = {
+          ...userData,
+          businessName: values.businessName,
+          businessType: values.businessType,
         };
-
-        if (values.role === 'Customer') {
-            userData = { ...userData, fullName: values.fullName };
-        } else { // Ride Owner
-            userData = { 
-                ...userData,
-                businessName: values.businessName,
-                businessType: values.businessType,
-                contactPerson: values.contactPerson,
-                status: 'Pending Approval'
-            };
-            
-            // 3a. Also create an entry in the 'rideOwners' collection for admin management
-            await setDoc(doc(db, 'rideOwners', user.uid), {
-                name: values.businessName,
-                contact: values.email,
-                plan: 'None',
-                status: 'Pending Approval',
-                createdAt: serverTimestamp(),
-            });
-
-             // 3b. Create a notification for the admin
-            await addDoc(collection(db, 'notifications'), {
-                message: `New ride owner '${values.businessName}' signed up and needs approval.`,
-                ownerName: values.businessName,
-                eventType: 'new_owner',
-                createdAt: serverTimestamp(),
-                read: false
-            });
-        }
         
-        // 3. Save user profile to 'users' collection
-        await setDoc(doc(db, 'users', user.uid), userData);
-
-        toast({
-            title: "Account Created!",
-            description: "Your account has been successfully created. Please sign in.",
+        await setDoc(doc(db, 'rideOwners', user.uid), {
+          name: values.businessName,
+          contactPerson: values.fullName,
+          contact: values.email,
+          plan: 'None',
+          status: 'Pending Approval',
+          createdAt: serverTimestamp(),
         });
-        router.push('/login');
+
+        await addDoc(collection(db, 'notifications'), {
+            message: `New ride owner '${values.businessName}' signed up and needs approval.`,
+            ownerName: values.businessName,
+            eventType: 'new_owner',
+            createdAt: serverTimestamp(),
+            read: false
+        });
+      }
+
+      await setDoc(doc(db, 'users', user.uid), userData);
+
+      toast({
+        title: 'Account Created!',
+        description: 'Your account has been successfully created. Please sign in.',
+      });
+      router.push('/login');
 
     } catch (error: any) {
-        console.error("Signup Error:", error);
-        let errorMessage = "An unknown error occurred.";
-        if (error.code === 'auth/email-already-in-use') {
-            errorMessage = "This email address is already in use.";
-        }
-        toast({
-            variant: "destructive",
-            title: "Sign-up Failed",
-            description: errorMessage,
-        });
+      let errorMessage = 'An unknown error occurred. Check your internet connection.';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email address is already in use.';
+      }
+      toast({
+        variant: 'destructive',
+        title: 'Sign-up Failed',
+        description: errorMessage,
+      });
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-md">
+      <div className="mx-auto w-full max-w-md">
         <div className="flex justify-center mb-6">
-          <Link href="/" className="flex items-center gap-2" prefetch={false}>
+          <Link href="/" className="flex items-center gap-2">
             <Car className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold text-foreground font-headline">Orange Rides</span>
+            <span className="text-2xl font-bold font-headline">Orange Rides</span>
           </Link>
         </div>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl font-headline">Create an Account</CardTitle>
-            <CardDescription>Join us to start your journey.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>I am a...</FormLabel>
-                      <Select onValueChange={(value: 'Customer' | 'Ride Owner') => handleRoleChange(value)} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select your role" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Customer">Customer</SelectItem>
-                          <SelectItem value="Ride Owner">Ride Owner</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+        <Tabs defaultValue="Customer" className="w-full" onValueChange={handleTabChange}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="Customer">I'm a Customer</TabsTrigger>
+            <TabsTrigger value="Ride Owner">I'm a Ride Owner</TabsTrigger>
+          </TabsList>
+          <Card className="mt-4">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-headline">Create an Account</CardTitle>
+              <CardDescription>
+                {form.getValues('role') === 'Customer'
+                  ? 'Find and book rides with ease.'
+                  : 'List your vehicle and start earning.'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <TabsContent value="Customer" className="m-0 p-0 space-y-4">
+                    {/* Common fields will render here */}
+                  </TabsContent>
+                  <TabsContent value="Ride Owner" className="m-0 p-0 space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="businessName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Business Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., City Express" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="businessType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Business Type</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select your business type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Transport Company">Transport Company</SelectItem>
+                              <SelectItem value="Individual Driver">Individual Driver</SelectItem>
+                              <SelectItem value="Booking Company">Booking Company</SelectItem>
+                              <SelectItem value="Vehicle Rental Service">Vehicle Rental Service</SelectItem>
+                              <SelectItem value="Taxi Service">Taxi Service</SelectItem>
+                              <SelectItem value="Bus Service">Bus Service</SelectItem>
+                              <SelectItem value="Private Rides Service">Private Rides Service</SelectItem>
+                              <SelectItem value="Shuttle Service">Shuttle Service</SelectItem>
+                              <SelectItem value="Logistics Service">Logistics Service</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </TabsContent>
 
-                {role === 'Customer' && (
-                  <>
-                    <FormField control={form.control} name="fullName" render={({ field }) => (
+                  {/* Common Fields */}
+                  <FormField
+                    control={form.control}
+                    name="fullName"
+                    render={({ field }) => (
                       <FormItem>
                         <FormLabel>Full Name</FormLabel>
-                        <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                        <FormControl>
+                          <Input placeholder="John Doe" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
-                    )} />
-                  </>
-                )}
-
-                {role === 'Ride Owner' && (
-                  <>
-                    <FormField control={form.control} name="businessName" render={({ field }) => (
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Business Name</FormLabel>
-                        <FormControl><Input placeholder="e.g., City Express" {...field} /></FormControl>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="you@example.com" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
-                    )} />
-                    <FormField control={form.control} name="businessType" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Business Type</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select a type" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    <SelectItem value="Transport Company">Transport Company</SelectItem>
-                                    <SelectItem value="Individual Driver">Individual Driver</SelectItem>
-                                    <SelectItem value="Booking Company">Booking Company</SelectItem>
-                                    <SelectItem value="Vehicle Rental Service">Vehicle Rental Service</SelectItem>
-                                    <SelectItem value="Taxi Service">Taxi Service</SelectItem>
-                                    <SelectItem value="Bus Service">Bus Service</SelectItem>
-                                    <SelectItem value="Private Rides Service">Private Rides Service</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                     <FormField control={form.control} name="contactPerson" render={({ field }) => (
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Contact Person</FormLabel>
-                        <FormControl><Input placeholder="e.g., Jane Smith" {...field} /></FormControl>
+                        <FormLabel>Phone Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="2348012345678" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
-                    )} />
-                  </>
-                )}
-
-                <FormField control={form.control} name="email" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <FormField control={form.control} name="phone" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
-                    <FormControl><Input placeholder="2348012345678" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <FormField control={form.control} name="password" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl><Input type="password" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <FormField
-                  control={form.control}
-                  name="terms"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md">
-                      <FormControl>
-                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          I agree to the <Link href="/terms" className="text-primary hover:underline">Terms & Conditions</Link>
-                        </FormLabel>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••••" {...field} />
+                        </FormControl>
                         <FormMessage />
-                      </div>
-                    </FormItem>
-                  )}
-                />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••••" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isLoading ? 'Creating Account...' : 'Sign Up'}
-                </Button>
-
-                <div className="text-center text-sm text-muted-foreground">
-                  Already have an account? <Link href="/login" className="text-primary hover:underline">Sign In</Link>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Create Account
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </Tabs>
+        <div className="mt-6 text-center text-sm">
+          Already have an account?{' '}
+          <Link href="/login" className="font-semibold text-primary hover:underline">
+            Sign in
+          </Link>
+        </div>
       </div>
     </div>
   );

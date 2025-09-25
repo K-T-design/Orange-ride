@@ -47,7 +47,8 @@ export function Header() {
   const pathname = usePathname();
 
   // Don't render header for admin or auth pages
-  if (pathname.startsWith('/admin') || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/customer')) {
+  const authPages = ['/admin', '/login', '/signup', '/customer', '/owner'];
+  if (authPages.some(p => pathname.startsWith(p))) {
     return null;
   }
 
@@ -111,17 +112,7 @@ export function Header() {
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/profile">Profile</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/my-rides">My Rides</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/settings">Settings</Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                 <Link href="/login">Sign In</Link>
+                <Link href="/login">Sign In</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/signup">Sign Up</Link>
