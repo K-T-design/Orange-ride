@@ -14,8 +14,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, MoreHorizontal, HelpCircle, Edit, Trash2, Loader2 } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -51,10 +52,11 @@ export default function FaqsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [currentFaq, setCurrentFaq] = useState<Faq | null>(null);
 
     const { toast } = useToast();
 
-    const { register, handleSubmit, reset, control, formState: { errors } } = useForm<FaqFormData>({
+    const { register, handleSubmit, reset, control, setValue, formState: { errors } } = useForm<FaqFormData>({
         resolver: zodResolver(faqSchema),
         defaultValues: {
             question: '',
@@ -79,21 +81,64 @@ export default function FaqsPage() {
         return () => unsubscribe();
     }, [toast]);
     
-    const handleAddFaq: SubmitHandler<FaqFormData> = async (data) => {
+    const openDialog = (faq: Faq | null) => {
+        setCurrentFaq(faq);
+        if (faq) {
+            setValue('question', faq.question);
+            setValue('answer', faq.answer);
+            setValue('category', faq.category);
+            setValue('isActive', faq.isActive);
+        } else {
+            reset();
+        }
+        setIsDialogOpen(true);
+    }
+    
+    const handleFormSubmit: SubmitHandler<FaqFormData> = async (data) => {
         setIsSubmitting(true);
         try {
-            await addDoc(collection(db, 'faqs'), {
-                ...data,
-                createdAt: serverTimestamp(),
-            });
-            toast({ title: 'FAQ Added Successfully' });
+            if (currentFaq) {
+                // Update existing FAQ
+                const faqRef = doc(db, 'faqs', currentFaq.id);
+                await updateDoc(faqRef, { ...data, updatedAt: serverTimestamp() });
+                toast({ title: 'FAQ Updated Successfully' });
+            } else {
+                // Add new FAQ
+                await addDoc(collection(db, 'faqs'), {
+                    ...data,
+                    createdAt: serverTimestamp(),
+                });
+                toast({ title: 'FAQ Added Successfully' });
+            }
             setIsDialogOpen(false);
             reset();
+            setCurrentFaq(null);
         } catch (error) {
-            console.error("Error adding FAQ:", error);
-            toast({ variant: 'destructive', title: 'Failed to add FAQ.' });
+            console.error("Error saving FAQ:", error);
+            toast({ variant: 'destructive', title: 'Failed to save FAQ.' });
         } finally {
             setIsSubmitting(false);
+        }
+    }
+
+    const handleDeleteFaq = async (faqId: string) => {
+        try {
+            await deleteDoc(doc(db, 'faqs', faqId));
+            toast({ title: 'FAQ Deleted' });
+        } catch (error) {
+            console.error("Error deleting FAQ:", error);
+            toast({ variant: 'destructive', title: 'Failed to delete FAQ.' });
+        }
+    }
+
+    const handleToggleActive = async (faq: Faq) => {
+        const faqRef = doc(db, 'faqs', faq.id);
+        try {
+            await updateDoc(faqRef, { isActive: !faq.isActive });
+            toast({ title: `FAQ ${faq.isActive ? 'deactivated' : 'activated'}` });
+        } catch (error) {
+            console.error("Error toggling status:", error);
+            toast({ variant: 'destructive', title: 'Failed to update status.' });
         }
     }
 
@@ -105,7 +150,7 @@ export default function FaqsPage() {
                     <h1 className="text-3xl font-bold font-headline">Manage FAQs</h1>
                     <p className="text-muted-foreground">Add, edit, or remove frequently asked questions.</p>
                 </div>
-                <Button onClick={() => setIsDialogOpen(true)}>
+                <Button onClick={() => openDialog(null)}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add FAQ
                 </Button>
@@ -148,23 +193,46 @@ export default function FaqsPage() {
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem className="text-destructive">
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            <AlertDialog>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onSelect={() => openDialog(faq)}>
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            Edit
+                                                        </DropdownMenuItem>
+                                                         <DropdownMenuItem onSelect={() => handleToggleActive(faq)}>
+                                                            <Switch checked={faq.isActive} className="mr-2 h-4 w-4" />
+                                                            Toggle Status
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <AlertDialogTrigger asChild>
+                                                            <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        </AlertDialogTrigger>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                                 <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This will permanently delete the FAQ: "{faq.question}"
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteFaq(faq.id)} className="bg-destructive hover:bg-destructive/90">
+                                                            Yes, delete
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -177,10 +245,12 @@ export default function FaqsPage() {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Add New FAQ</DialogTitle>
-                        <DialogDescription>Create a new frequently asked question to display on the Help page.</DialogDescription>
+                        <DialogTitle>{currentFaq ? 'Edit' : 'Add New'} FAQ</DialogTitle>
+                        <DialogDescription>
+                            {currentFaq ? 'Update this frequently asked question.' : 'Create a new frequently asked question to display on the Help page.'}
+                        </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleSubmit(handleAddFaq)} className="space-y-4">
+                    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="question">Question</Label>
                             <Input id="question" {...register('question')} />
@@ -198,7 +268,7 @@ export default function FaqsPage() {
                                     name="category"
                                     control={control}
                                     render={({ field }) => (
-                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                         <Select onValueChange={field.onChange} value={field.value}>
                                             <SelectTrigger id="category">
                                                 <SelectValue placeholder="Select a category" />
                                             </SelectTrigger>
