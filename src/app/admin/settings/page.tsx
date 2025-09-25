@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Trash2, Database, Edit, Loader2, Save } from "lucide-react";
+import { PlusCircle, Trash2, Database, Edit, Loader2, Save, Book, UploadCloud, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDoc, setDoc } from "firebase/firestore";
@@ -42,9 +42,12 @@ export default function SettingsPage() {
     const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
     const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
 
-    const [privacyPolicy, setPrivacyPolicy] = useState('');
+    const [publishedPolicy, setPublishedPolicy] = useState('');
+    const [draftPolicy, setDraftPolicy] = useState('');
     const [isLoadingPolicy, setIsLoadingPolicy] = useState(true);
-    const [isSavingPolicy, setIsSavingPolicy] = useState(false);
+    const [isSavingDraft, setIsSavingDraft] = useState(false);
+    const [isPublishing, setIsPublishing] = useState(false);
+    const [hasDraft, setHasDraft] = useState(false);
 
 
     useEffect(() => {
@@ -63,14 +66,25 @@ export default function SettingsPage() {
         const fetchPrivacyPolicy = async () => {
             setIsLoadingPolicy(true);
             try {
-                const policyRef = doc(db, 'siteContent', 'privacyPolicy');
-                const docSnap = await getDoc(policyRef);
-                if (docSnap.exists()) {
-                    setPrivacyPolicy(docSnap.data().content);
+                const publishedRef = doc(db, 'siteContent', 'privacyPolicy');
+                const draftRef = doc(db, 'siteContent', 'privacyPolicy', 'drafts', 'latest');
+
+                const [publishedSnap, draftSnap] = await Promise.all([
+                    getDoc(publishedRef),
+                    getDoc(draftRef)
+                ]);
+
+                const publishedContent = publishedSnap.exists() ? publishedSnap.data().content : 'The privacy policy has not been set yet.';
+                setPublishedPolicy(publishedContent);
+                
+                if (draftSnap.exists()) {
+                    setDraftPolicy(draftSnap.data().content);
+                    setHasDraft(true);
                 } else {
-                    // If it doesn't exist, we can set a default value or leave it empty
-                    setPrivacyPolicy('The privacy policy has not been set yet.');
+                    setDraftPolicy(publishedContent);
+                    setHasDraft(false);
                 }
+
             } catch (error) {
                 console.error("Error fetching privacy policy:", error);
                 toast({ variant: 'destructive', title: 'Failed to load privacy policy.' });
@@ -198,17 +212,49 @@ export default function SettingsPage() {
         }
     };
     
-    const handleSavePolicy = async () => {
-        setIsSavingPolicy(true);
+     const handleSaveDraft = async () => {
+        setIsSavingDraft(true);
         try {
-            const policyRef = doc(db, 'siteContent', 'privacyPolicy');
-            await setDoc(policyRef, { content: privacyPolicy });
-            toast({ title: 'Privacy Policy Updated', description: 'The changes are now live on your site.' });
+            const draftRef = doc(db, 'siteContent', 'privacyPolicy', 'drafts', 'latest');
+            await setDoc(draftRef, { content: draftPolicy });
+            setHasDraft(true);
+            toast({ title: 'Draft Saved', description: 'Your changes have been saved as a draft.' });
         } catch (error) {
-            console.error('Error saving policy:', error);
-            toast({ variant: 'destructive', title: 'Failed to save policy.' });
+            console.error('Error saving draft:', error);
+            toast({ variant: 'destructive', title: 'Failed to save draft.' });
         } finally {
-            setIsSavingPolicy(false);
+            setIsSavingDraft(false);
+        }
+    };
+    
+    const handlePublish = async () => {
+        setIsPublishing(true);
+        try {
+            const publishedRef = doc(db, 'siteContent', 'privacyPolicy');
+            await setDoc(publishedRef, { content: draftPolicy });
+            setPublishedPolicy(draftPolicy); // Update state to match
+            await handleDiscardDraft(false); // Clear the draft after publishing
+            toast({ title: 'Privacy Policy Published', description: 'The changes are now live on your site.' });
+        } catch (error) {
+            console.error('Error publishing policy:', error);
+            toast({ variant: 'destructive', title: 'Failed to publish policy.' });
+        } finally {
+            setIsPublishing(false);
+        }
+    };
+    
+    const handleDiscardDraft = async (showToast = true) => {
+        try {
+            const draftRef = doc(db, 'siteContent', 'privacyPolicy', 'drafts', 'latest');
+            await deleteDoc(draftRef);
+            setDraftPolicy(publishedPolicy); // Revert editor to published version
+            setHasDraft(false);
+            if(showToast) {
+                toast({ title: 'Draft Discarded', description: 'Your draft changes have been removed.' });
+            }
+        } catch (error) {
+            console.error('Error discarding draft:', error);
+            toast({ variant: 'destructive', title: 'Failed to discard draft.' });
         }
     };
 
@@ -354,12 +400,25 @@ export default function SettingsPage() {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <CardTitle>Privacy Policy Editor</CardTitle>
-                                    <CardDescription>Edit the content of your site's privacy policy. The text supports Markdown for formatting.</CardDescription>
+                                    <CardDescription>Edit the content of your site's privacy policy. Changes must be published to go live.</CardDescription>
+                                    {hasDraft && <p className="text-sm text-yellow-600 mt-2">You have unpublished draft changes.</p>}
                                 </div>
-                                 <Button onClick={handleSavePolicy} disabled={isSavingPolicy}>
-                                    {isSavingPolicy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                    {isSavingPolicy ? 'Saving...' : 'Save Policy'}
-                                </Button>
+                                 <div className="flex gap-2">
+                                    {hasDraft && 
+                                        <Button onClick={() => handleDiscardDraft()} variant="outline" disabled={isSavingDraft || isPublishing}>
+                                            <RotateCcw className="mr-2 h-4 w-4" />
+                                            Discard Draft
+                                        </Button>
+                                    }
+                                    <Button onClick={handleSaveDraft} variant="secondary" disabled={isSavingDraft || isPublishing}>
+                                        {isSavingDraft ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                        {isSavingDraft ? 'Saving...' : 'Save Draft'}
+                                    </Button>
+                                    <Button onClick={handlePublish} disabled={isPublishing || isSavingDraft}>
+                                        {isPublishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+                                        {isPublishing ? 'Publishing...' : 'Publish'}
+                                    </Button>
+                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -367,8 +426,8 @@ export default function SettingsPage() {
                                 <Skeleton className="w-full h-96" />
                            ) : (
                                 <Textarea
-                                    value={privacyPolicy}
-                                    onChange={(e) => setPrivacyPolicy(e.target.value)}
+                                    value={draftPolicy}
+                                    onChange={(e) => setDraftPolicy(e.target.value)}
                                     rows={25}
                                     placeholder="Enter your privacy policy content here..."
                                     className="font-mono text-sm"
@@ -454,3 +513,4 @@ export default function SettingsPage() {
         </div>
     );
 }
+
