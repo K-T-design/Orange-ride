@@ -1,23 +1,83 @@
 
+'use client';
+
+import { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function TermsOfServicePage() {
+  const [content, setContent] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [effectiveDate, setEffectiveDate] = useState<Date | null>(null);
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      try {
+        const docRef = doc(db, 'siteContent', 'termsAndConditions');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setContent(data.content);
+          if (data.publishedAt) {
+            setEffectiveDate(data.publishedAt.toDate());
+          } else {
+            setEffectiveDate(new Date());
+          }
+        } else {
+          setContent("The Terms & Conditions have not been set yet. Please check back later.");
+          setEffectiveDate(new Date());
+        }
+      } catch (error) {
+        console.error("Error fetching terms: ", error);
+        setContent("Could not load the Terms & Conditions at this time. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchContent();
+  }, []);
+
   return (
     <div className="container mx-auto max-w-4xl py-12">
+        <Button asChild variant="outline" className="mb-6">
+            <Link href="/">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Home
+            </Link>
+        </Button>
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold font-headline">Terms of Service</h1>
-        <p className="text-lg text-muted-foreground mt-2">
-          Last Updated: {new Date().toLocaleDateString()}
-        </p>
+        <h1 className="text-4xl font-bold font-headline">Terms & Conditions</h1>
+        {isLoading ? (
+          <Skeleton className="h-6 w-48 mx-auto mt-2" />
+        ) : (
+          <p className="text-lg text-muted-foreground mt-2">
+            Effective Date: {effectiveDate ? effectiveDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '...'}
+          </p>
+        )}
       </div>
       <Card>
-        <CardHeader>
-          <CardTitle>Coming Soon</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>
-            Our Terms of Service are currently being drafted and will be available here soon. These terms will govern your use of the Orange Rides platform. We appreciate your patience and encourage you to check back shortly for the complete terms.
-          </p>
+        <CardContent className="p-6">
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-5 w-full" />
+              <Skeleton className="h-5 w-full" />
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-5 w-full mt-4" />
+              <Skeleton className="h-5 w-5/6" />
+            </div>
+          ) : (
+             <div className="prose prose-sm prose-p:text-foreground prose-h1:text-foreground prose-h2:text-foreground prose-h3:text-foreground prose-h4:text-foreground prose-a:text-primary max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {content}
+                </ReactMarkdown>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -45,12 +45,21 @@ export default function SettingsPage() {
     const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
     const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
 
+    // Privacy Policy State
     const [publishedPolicy, setPublishedPolicy] = useState('');
     const [draftPolicy, setDraftPolicy] = useState('');
     const [isLoadingPolicy, setIsLoadingPolicy] = useState(true);
-    const [isSavingDraft, setIsSavingDraft] = useState(false);
-    const [isPublishing, setIsPublishing] = useState(false);
-    const [hasDraft, setHasDraft] = useState(false);
+    const [isSavingDraftPolicy, setIsSavingDraftPolicy] = useState(false);
+    const [isPublishingPolicy, setIsPublishingPolicy] = useState(false);
+    const [hasDraftPolicy, setHasDraftPolicy] = useState(false);
+
+    // Terms & Conditions State
+    const [publishedTerms, setPublishedTerms] = useState('');
+    const [draftTerms, setDraftTerms] = useState('');
+    const [isLoadingTerms, setIsLoadingTerms] = useState(true);
+    const [isSavingDraftTerms, setIsSavingDraftTerms] = useState(false);
+    const [isPublishingTerms, setIsPublishingTerms] = useState(false);
+    const [hasDraftTerms, setHasDraftTerms] = useState(false);
 
 
     useEffect(() => {
@@ -66,37 +75,38 @@ export default function SettingsPage() {
             setIsLoading(prev => ({...prev, locations: false}));
         });
 
-        const fetchPrivacyPolicy = async () => {
-            setIsLoadingPolicy(true);
-            try {
-                const publishedRef = doc(db, 'siteContent', 'privacyPolicy');
-                const draftRef = doc(db, 'siteContent', 'privacyPolicy', 'drafts', 'latest');
+        const fetchContent = async (contentName: string, setPublished: Function, setDraft: Function, setHasDraft: Function, setLoading: Function) => {
+            setLoading(true);
+             try {
+                const publishedRef = doc(db, 'siteContent', contentName);
+                const draftRef = doc(db, 'siteContent', contentName, 'drafts', 'latest');
 
                 const [publishedSnap, draftSnap] = await Promise.all([
                     getDoc(publishedRef),
                     getDoc(draftRef)
                 ]);
 
-                const publishedContent = publishedSnap.exists() ? publishedSnap.data().content : 'The privacy policy has not been set yet.';
-                setPublishedPolicy(publishedContent);
+                const publishedContent = publishedSnap.exists() ? publishedSnap.data().content : 'The content has not been set yet.';
+                setPublished(publishedContent);
                 
                 if (draftSnap.exists()) {
-                    setDraftPolicy(draftSnap.data().content);
+                    setDraft(draftSnap.data().content);
                     setHasDraft(true);
                 } else {
-                    setDraftPolicy(publishedContent);
+                    setDraft(publishedContent);
                     setHasDraft(false);
                 }
 
             } catch (error) {
-                console.error("Error fetching privacy policy:", error);
-                toast({ variant: 'destructive', title: 'Failed to load privacy policy.' });
+                console.error(`Error fetching ${contentName}:`, error);
+                toast({ variant: 'destructive', title: `Failed to load ${contentName}.` });
             } finally {
-                setIsLoadingPolicy(false);
+                setLoading(false);
             }
-        };
+        }
 
-        fetchPrivacyPolicy();
+        fetchContent('privacyPolicy', setPublishedPolicy, setDraftPolicy, setHasDraftPolicy, setIsLoadingPolicy);
+        fetchContent('termsAndConditions', setPublishedTerms, setDraftTerms, setHasDraftTerms, setIsLoadingTerms);
 
         return () => {
             unsubCategories();
@@ -215,43 +225,52 @@ export default function SettingsPage() {
         }
     };
     
-     const handleSaveDraft = async () => {
-        setIsSavingDraft(true);
+    const handleSaveDraft = async (contentName: string, draftContent: string, setIsSaving: Function, setHasDraft: Function) => {
+        setIsSaving(true);
         try {
-            const draftRef = doc(db, 'siteContent', 'privacyPolicy', 'drafts', 'latest');
-            await setDoc(draftRef, { content: draftPolicy, updatedAt: new Date() });
+            const draftRef = doc(db, 'siteContent', contentName, 'drafts', 'latest');
+            await setDoc(draftRef, { content: draftContent, updatedAt: new Date() });
             setHasDraft(true);
             toast({ title: 'Draft Saved', description: 'Your changes have been saved as a draft.' });
         } catch (error) {
             console.error('Error saving draft:', error);
             toast({ variant: 'destructive', title: 'Failed to save draft.' });
         } finally {
-            setIsSavingDraft(false);
+            setIsSaving(false);
         }
     };
     
-    const handlePublish = async () => {
+    const handlePublish = async (contentName: string, draftContent: string, setIsPublishing: Function, setPublishedContent: Function) => {
         setIsPublishing(true);
         try {
-            const publishedRef = doc(db, 'siteContent', 'privacyPolicy');
-            await setDoc(publishedRef, { content: draftPolicy, publishedAt: new Date() });
-            setPublishedPolicy(draftPolicy); // Update state to match
-            await handleDiscardDraft(false); // Clear the draft after publishing
-            toast({ title: 'Privacy Policy Published', description: 'The changes are now live on your site.' });
+            const publishedRef = doc(db, 'siteContent', contentName);
+            await setDoc(publishedRef, { content: draftContent, publishedAt: new Date() });
+            setPublishedContent(draftContent);
+            if (contentName === 'privacyPolicy') {
+                await handleDiscardDraft('privacyPolicy', false);
+            } else {
+                 await handleDiscardDraft('termsAndConditions', false);
+            }
+            toast({ title: 'Content Published', description: 'The changes are now live on your site.' });
         } catch (error) {
-            console.error('Error publishing policy:', error);
-            toast({ variant: 'destructive', title: 'Failed to publish policy.' });
+            console.error('Error publishing content:', error);
+            toast({ variant: 'destructive', title: 'Failed to publish content.' });
         } finally {
             setIsPublishing(false);
         }
     };
     
-    const handleDiscardDraft = async (showToast = true) => {
+    const handleDiscardDraft = async (contentName: string, showToast = true) => {
         try {
-            const draftRef = doc(db, 'siteContent', 'privacyPolicy', 'drafts', 'latest');
+            const draftRef = doc(db, 'siteContent', contentName, 'drafts', 'latest');
             await deleteDoc(draftRef);
-            setDraftPolicy(publishedPolicy); // Revert editor to published version
-            setHasDraft(false);
+            if (contentName === 'privacyPolicy') {
+                setDraftPolicy(publishedPolicy);
+                setHasDraftPolicy(false);
+            } else {
+                setDraftTerms(publishedTerms);
+                setHasDraftTerms(false);
+            }
             if(showToast) {
                 toast({ title: 'Draft Discarded', description: 'Your draft changes have been removed.' });
             }
@@ -271,15 +290,103 @@ export default function SettingsPage() {
         setIsLocDialogOpen(true);
     };
 
+    const EditorComponent = ({ title, description, isLoading, draftContent, setDraftContent, handleSaveDraft, isSavingDraft, handlePublish, isPublishing, hasDraft, handleDiscardDraft }: any) => (
+         <Card>
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle>{title}</CardTitle>
+                        <CardDescription>{description}</CardDescription>
+                        {hasDraft && <p className="text-sm text-yellow-600 mt-2">You have unpublished draft changes.</p>}
+                    </div>
+                     <div className="flex gap-2">
+                        {hasDraft && 
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="outline" disabled={isSavingDraft || isPublishing}>
+                                        <RotateCcw className="mr-2 h-4 w-4" />
+                                        Discard Draft
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Discard all draft changes?</AlertDialogTitle>
+                                        <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDiscardDraft(true)}>Discard</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        }
+                        <Button onClick={handleSaveDraft} variant="secondary" disabled={isSavingDraft || isPublishing}>
+                            {isSavingDraft ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            {isSavingDraft ? 'Saving...' : 'Save Draft'}
+                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button disabled={isPublishing || isSavingDraft || !hasDraft}>
+                                    {isPublishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+                                    {isPublishing ? 'Publishing...' : 'Publish'}
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Publish changes to the live site?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will make the current draft visible to all users. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handlePublish}>Publish Changes</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                     </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+               {isLoading ? (
+                    <Skeleton className="w-full h-96" />
+               ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="editor" className="text-sm font-medium">Editor (Markdown)</Label>
+                            <Textarea
+                                id="editor"
+                                value={draftContent}
+                                onChange={(e) => setDraftContent(e.target.value)}
+                                rows={25}
+                                placeholder="Enter your content here..."
+                                className="font-mono text-sm mt-2"
+                            />
+                        </div>
+                        <div className="border rounded-md">
+                             <Label className="text-sm font-medium px-4 pt-3 block">Live Preview</Label>
+                            <div className="p-4 prose prose-sm prose-p:text-foreground prose-h1:text-foreground prose-h2:text-foreground prose-h3:text-foreground prose-h4:text-foreground prose-a:text-primary max-w-none">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {draftContent}
+                                </ReactMarkdown>
+                            </div>
+                        </div>
+                    </div>
+               )}
+            </CardContent>
+        </Card>
+    );
+
     return (
         <div className="flex flex-col gap-8">
             <h1 className="text-3xl font-bold font-headline">Settings</h1>
 
-            <Tabs defaultValue="categories">
-                <TabsList className="grid w-full grid-cols-4">
+            <Tabs defaultValue="categories" className="w-full">
+                <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="categories">Categories</TabsTrigger>
                     <TabsTrigger value="locations">Locations</TabsTrigger>
                     <TabsTrigger value="policy">Privacy Policy</TabsTrigger>
+                    <TabsTrigger value="terms">Terms &amp; Conditions</TabsTrigger>
                     <TabsTrigger value="data">Data</TabsTrigger>
                 </TabsList>
 
@@ -398,90 +505,35 @@ export default function SettingsPage() {
                 </TabsContent>
                 
                 <TabsContent value="policy">
-                    <Card>
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle>Privacy Policy Editor</CardTitle>
-                                    <CardDescription>Edit the content using Markdown. Changes must be published to go live.</CardDescription>
-                                    {hasDraft && <p className="text-sm text-yellow-600 mt-2">You have unpublished draft changes.</p>}
-                                </div>
-                                 <div className="flex gap-2">
-                                    {hasDraft && 
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="outline" disabled={isSavingDraft || isPublishing}>
-                                                    <RotateCcw className="mr-2 h-4 w-4" />
-                                                    Discard Draft
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Discard all draft changes?</AlertDialogTitle>
-                                                    <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDiscardDraft()}>Discard</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    }
-                                    <Button onClick={handleSaveDraft} variant="secondary" disabled={isSavingDraft || isPublishing}>
-                                        {isSavingDraft ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                        {isSavingDraft ? 'Saving...' : 'Save Draft'}
-                                    </Button>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button disabled={isPublishing || isSavingDraft || !hasDraft}>
-                                                {isPublishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
-                                                {isPublishing ? 'Publishing...' : 'Publish'}
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Publish changes to the live site?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    This will make the current draft visible to all users. This action cannot be undone.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={handlePublish}>Publish Changes</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                 </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                           {isLoadingPolicy ? (
-                                <Skeleton className="w-full h-96" />
-                           ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="policy-editor" className="text-sm font-medium">Editor (Markdown)</Label>
-                                        <Textarea
-                                            id="policy-editor"
-                                            value={draftPolicy}
-                                            onChange={(e) => setDraftPolicy(e.target.value)}
-                                            rows={25}
-                                            placeholder="Enter your privacy policy content here..."
-                                            className="font-mono text-sm mt-2"
-                                        />
-                                    </div>
-                                    <div className="border rounded-md">
-                                         <Label className="text-sm font-medium px-4 pt-3 block">Live Preview</Label>
-                                        <div className="p-4 prose prose-sm prose-p:text-foreground prose-h1:text-foreground prose-h2:text-foreground prose-h3:text-foreground prose-h4:text-foreground prose-a:text-primary max-w-none">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {draftPolicy}
-                                            </ReactMarkdown>
-                                        </div>
-                                    </div>
-                                </div>
-                           )}
-                        </CardContent>
-                    </Card>
+                   <EditorComponent 
+                        title="Privacy Policy Editor"
+                        description="Edit the content using Markdown. Changes must be published to go live."
+                        isLoading={isLoadingPolicy}
+                        draftContent={draftPolicy}
+                        setDraftContent={setDraftPolicy}
+                        handleSaveDraft={() => handleSaveDraft('privacyPolicy', draftPolicy, setIsSavingDraftPolicy, setHasDraftPolicy)}
+                        isSavingDraft={isSavingDraftPolicy}
+                        handlePublish={() => handlePublish('privacyPolicy', draftPolicy, setIsPublishingPolicy, setPublishedPolicy)}
+                        isPublishing={isPublishingPolicy}
+                        hasDraft={hasDraftPolicy}
+                        handleDiscardDraft={(showToast: boolean) => handleDiscardDraft('privacyPolicy', showToast)}
+                   />
+                </TabsContent>
+
+                <TabsContent value="terms">
+                     <EditorComponent 
+                        title="Terms & Conditions Editor"
+                        description="Edit the content using Markdown. Changes must be published to go live."
+                        isLoading={isLoadingTerms}
+                        draftContent={draftTerms}
+                        setDraftContent={setDraftTerms}
+                        handleSaveDraft={() => handleSaveDraft('termsAndConditions', draftTerms, setIsSavingDraftTerms, setHasDraftTerms)}
+                        isSavingDraft={isSavingDraftTerms}
+                        handlePublish={() => handlePublish('termsAndConditions', draftTerms, setIsPublishingTerms, setPublishedTerms)}
+                        isPublishing={isPublishingTerms}
+                        hasDraft={hasDraftTerms}
+                        handleDiscardDraft={(showToast: boolean) => handleDiscardDraft('termsAndConditions', showToast)}
+                   />
                 </TabsContent>
 
                  <TabsContent value="data">
