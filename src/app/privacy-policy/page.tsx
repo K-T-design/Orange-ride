@@ -34,7 +34,7 @@ export default function PrivacyPolicyPage() {
         <CardContent className="p-6">
             <Accordion type="single" collapsible className="w-full">
                 <PolicySection value="item-1" title="1. Introduction">
-                    <p>Welcome to Orange Rides. We are committed to protecting your personal information and your right to privacy. If you have any questions or concerns about our policy, or our practices with regards to your personal information, please contact us at <a href="mailto:privacy@orangerides.com" className="text-primary hover:underline">privacy@orangerides.com</a>.</p>
+                    <p>Welcome to Orange Rides. We are committed to protecting your personal information and your right to privacy. If you have any questions or concerns about our policy, or our practices with regards to your personal information, please contact us at <a href="mailto:orangemotorslogistics@gmail.com" className="text-primary hover:underline">orangemotorslogistics@gmail.com</a>.</p>
                     <p>When you visit our website and use our services, you trust us with your personal information. We take your privacy very seriously. In this privacy policy, we seek to explain to you in the clearest way possible what information we collect, how we use it, and what rights you have in relation to it.</p>
                 </PolicySection>
                 
