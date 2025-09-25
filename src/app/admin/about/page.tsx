@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 
 
 export default function AboutUsEditorPage() {
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false); // Changed to false, will be true when fetching data
     const [isSaving, setIsSaving] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
     
