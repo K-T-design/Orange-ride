@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -94,7 +95,7 @@ export function RideSearchForm() {
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                         <Input
                           placeholder="Destination (optional)"
-                          className="pl-10 h-12 text-base md:rounded-r-none md:rounded-l-none border-0 md:border-r"
+                          className="pl-10 h-12 text-base text-foreground md:rounded-r-none md:rounded-l-none border-0 md:border-r"
                           {...field}
                         />
                     </div>
