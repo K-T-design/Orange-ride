@@ -22,7 +22,7 @@ const contactSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters.'),
     email: z.string().email('Please enter a valid email address.'),
     subject: z.string().min(5, 'Subject must be at least 5 characters.'),
-    message: z.string().min(10, 'Message must be at least 10 characters.'),
+    message: z.string().min(20, 'Message must be at least 20 characters long.'),
     attachment: z.any().optional(),
 });
 
@@ -41,6 +41,10 @@ export function ContactForm() {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            if (file.size > 5 * 1024 * 1024) { // 5MB validation
+                form.setError('attachment', { type: 'manual', message: 'File size cannot exceed 5MB.' });
+                return;
+            }
             form.setValue('attachment', file);
             setFileName(file.name);
         }
