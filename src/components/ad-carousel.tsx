@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -22,46 +22,36 @@ type Ad = {
   createdAt: any;
 };
 
-export function AdCarousel() {
-  const [ads, setAds] = useState<Ad[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const q = query(
-        collection(db, 'advertisements'), 
-        where('isActive', '==', true)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const adsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Ad));
-      
-      // Sort on the client side to avoid needing a composite index
-      const sortedAds = adsData.sort((a, b) => {
-        const priorityA = a.priority || 0;
-        const priorityB = b.priority || 0;
-        if (priorityA !== priorityB) {
-            return priorityB - priorityA;
-        }
-        return b.createdAt.toMillis() - a.createdAt.toMillis();
-      });
-
-      setAds(sortedAds);
-      setIsLoading(false);
-    }, (error) => {
+async function getActiveAds(): Promise<Ad[]> {
+    try {
+        const q = query(
+            collection(db, 'advertisements'), 
+            where('isActive', '==', true)
+        );
+        const snapshot = await getDocs(q);
+        const adsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Ad));
+        
+        // Sort on the server side
+        const sortedAds = adsData.sort((a, b) => {
+            const priorityA = a.priority || 0;
+            const priorityB = b.priority || 0;
+            if (priorityA !== priorityB) {
+                return priorityB - priorityA;
+            }
+            // Firestore Timestamps need to be converted for sorting
+            const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return timeB - timeA;
+        });
+        return sortedAds;
+    } catch (error) {
         console.error("Error fetching ads: ", error);
-        setIsLoading(false);
-    });
+        return [];
+    }
+}
 
-    return () => unsubscribe();
-  }, []);
 
-  if (isLoading) {
-    return (
-      <div className="w-full">
-        <Skeleton className="aspect-[16/6] w-full rounded-lg" />
-      </div>
-    );
-  }
-
+function AdCarouselClient({ ads }: { ads: Ad[] }) {
   if (ads.length === 0) {
     return null; // Don't render anything if there are no active ads
   }
@@ -110,4 +100,16 @@ export function AdCarousel() {
       <CarouselNext className="mr-16"/>
     </Carousel>
   );
+}
+
+
+export async function AdCarousel() {
+    const ads = await getActiveAds();
+
+    // The Skeleton can be part of the Server Component during suspense
+    if (ads.length === 0) {
+        return null; // Or return a placeholder if desired
+    }
+
+    return <AdCarouselClient ads={ads} />;
 }
