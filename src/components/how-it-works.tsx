@@ -1,9 +1,12 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 import { Search, CheckCircle, Phone, UserPlus, CreditCard, Car } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
 
 const customerSteps = [
     {
@@ -43,13 +46,36 @@ const ownerSteps = [
 
 
 export function HowItWorks() {
+    const [user, loadingAuth] = useAuthState(auth);
+    const [defaultTab, setDefaultTab] = useState<'customer' | 'owner'>('customer');
+
+    useEffect(() => {
+        const fetchUserRole = async () => {
+            if (user) {
+                const userDocRef = doc(db, 'users', user.uid);
+                const userDoc = await getDoc(userDocRef);
+                if (userDoc.exists() && userDoc.data().role === 'Ride Owner') {
+                    setDefaultTab('owner');
+                } else {
+                    setDefaultTab('customer');
+                }
+            } else {
+                setDefaultTab('customer');
+            }
+        };
+
+        if (!loadingAuth) {
+            fetchUserRole();
+        }
+    }, [user, loadingAuth]);
+
     return (
         <section>
             <div className="text-center mb-12">
                 <h2 className="text-3xl font-bold font-headline">How It Works</h2>
                 <p className="text-muted-foreground max-w-2xl mx-auto">A simple guide to getting started on Orange Rides, whether you're looking for a ride or offering one.</p>
             </div>
-             <Tabs defaultValue="customer" className="w-full">
+             <Tabs value={defaultTab} onValueChange={(value) => setDefaultTab(value as 'customer' | 'owner')} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto">
                     <TabsTrigger value="customer">For Customers</TabsTrigger>
                     <TabsTrigger value="owner">For Ride Owners</TabsTrigger>
