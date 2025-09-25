@@ -1,21 +1,35 @@
 
+
+'use client';
+
 import { RideSearchForm } from '@/components/ride-search-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { History, Star, User, Bell } from 'lucide-react';
 import Link from 'next/link';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+
 
 export default function CustomerHomePage() {
+  const [user, loading] = useAuthState(auth);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl font-bold font-headline">Welcome, Customer!</h1>
-          <p className="text-lg text-muted-foreground mt-2">Ready to book your next ride? Start here.</p>
-        </div>
-
-        <div className="max-w-4xl mx-auto">
-           <RideSearchForm />
+          <h1 className="text-4xl font-bold font-headline">Customer Dashboard</h1>
+          <p className="text-lg text-muted-foreground mt-2">Manage your rides and profile.</p>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -84,6 +98,11 @@ export default function CustomerHomePage() {
              </CardContent>
            </Card>
          </div>
+          <div className="text-center pt-8">
+             <Button asChild>
+                <Link href="/">Back to Homepage</Link>
+             </Button>
+        </div>
 
       </div>
     </div>

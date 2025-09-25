@@ -1,18 +1,21 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Car, Star, DollarSign, Users, Loader2 } from 'lucide-react';
+import { Car, Star, Users, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 type RideOwnerData = {
   businessName: string;
   businessType: string;
-  listingCount?: number;
-  plan?: string;
+  listingCount: number;
+  plan: string;
 };
 
 export default function OwnerDashboardPage() {
@@ -23,26 +26,53 @@ export default function OwnerDashboardPage() {
   useEffect(() => {
     const fetchOwnerData = async () => {
       if (user) {
+        setIsLoading(true);
         try {
           const ownerDocRef = doc(db, 'rideOwners', user.uid);
-          const ownerDoc = await getDoc(ownerDocRef);
+          const listingsQuery = query(collection(db, 'listings'), where('ownerId', '==', user.uid));
 
-          if (ownerDoc.exists()) {
-            // NOTE: The prompt mentions `subscriptionPlan` and `listingCount`.
-            // The signup form created `plan`. We will handle both for robustness.
-            const data = ownerDoc.data();
-            setOwnerData({
-              businessName: data.name,
-              businessType: data.businessType || 'Not Specified', // businessType might not exist on older docs
-              plan: data.plan || data.subscriptionPlan || 'None',
-              listingCount: data.listingCount || 0,
-            });
-          } else {
-            console.error("Ride owner data not found!");
+          const unsubOwner = onSnapshot(ownerDocRef, (doc) => {
+             if (doc.exists()) {
+                const data = doc.data();
+                setOwnerData(prev => ({
+                    ...prev,
+                    businessName: data.name || 'Ride Owner',
+                    businessType: data.businessType || 'Not Specified',
+                    plan: data.plan || 'None',
+                    listingCount: prev?.listingCount ?? 0,
+                }));
+             }
+          });
+
+          const unsubListings = onSnapshot(listingsQuery, (snapshot) => {
+              setOwnerData(prev => ({
+                  ...(prev || { businessName: '', businessType: '', plan: '', listingCount: 0 }),
+                  listingCount: snapshot.size,
+              }));
+          });
+          
+          // Initial fetch to set loading to false
+          const ownerDoc = await getDoc(ownerDocRef);
+           if (ownerDoc.exists()) {
+                const data = ownerDoc.data();
+                setOwnerData(prev => ({
+                    ...prev,
+                    businessName: data.name || 'Ride Owner',
+                    businessType: data.businessType || 'Not Specified',
+                    plan: data.plan || 'None',
+                    listingCount: prev?.listingCount ?? 0,
+                }));
+             }
+
+          setIsLoading(false);
+          
+          return () => {
+              unsubOwner();
+              unsubListings();
           }
+
         } catch (error) {
           console.error("Error fetching ride owner data:", error);
-        } finally {
           setIsLoading(false);
         }
       }
@@ -126,6 +156,11 @@ export default function OwnerDashboardPage() {
             <p>No recent bookings to display.</p>
         </CardContent>
       </Card>
+       <div className="text-center pt-8">
+         <Button asChild>
+            <Link href="/">Back to Homepage</Link>
+         </Button>
+       </div>
     </div>
   );
 }

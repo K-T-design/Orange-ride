@@ -1,7 +1,15 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,9 +21,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Car, CircleUser, Menu, Search, PlusCircle, LifeBuoy } from 'lucide-react';
-import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { Car, CircleUser, Menu, Search, PlusCircle, LifeBuoy, LogOut, LayoutDashboard, User } from 'lucide-react';
+
+type UserState = {
+  loggedIn: boolean;
+  role: 'Customer' | 'Ride Owner' | 'Admin' | null;
+  initials: string;
+  avatarUrl?: string;
+};
 
 const Logo = () => (
   <Link href="/" className="flex items-center gap-2" prefetch={false}>
@@ -23,12 +36,6 @@ const Logo = () => (
     <span className="text-xl font-bold text-foreground font-headline">Orange Rides</span>
   </Link>
 );
-
-const navLinks = [
-  { href: '/search', label: 'Search', icon: Search },
-  { href: '/list-ride', label: 'List a Ride', icon: PlusCircle },
-  { href: '/help', label: 'Help', icon: LifeBuoy },
-];
 
 const NavLink = ({ href, label }: { href: string; label: string }) => {
     const pathname = usePathname();
@@ -42,15 +49,73 @@ const NavLink = ({ href, label }: { href: string; label: string }) => {
     );
 };
 
-
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [userState, setUserState] = useState<UserState | null>(null);
 
-  // Don't render header for admin or auth pages
-  const authPages = ['/admin', '/login', '/signup', '/customer', '/owner'];
-  if (authPages.some(p => pathname.startsWith(p))) {
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        let role: UserState['role'] = null;
+        let initials = 'U';
+        let avatarUrl = undefined;
+
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          role = userData.role; // 'Customer' or 'Ride Owner'
+          if (userData.fullName) {
+            initials = userData.fullName.charAt(0).toUpperCase();
+          }
+          if (userData.profilePicture) {
+            avatarUrl = userData.profilePicture;
+          }
+        }
+        
+        // Simplified Admin check for this demo
+        if (user.email === 'admin@example.com' || user.uid === 'XgQfA6sCVThsWw2g4iJpYc3F5yG3') {
+            role = 'Admin';
+            initials = 'A';
+        }
+
+        setUserState({ loggedIn: true, role, initials, avatarUrl });
+      } else {
+        setUserState({ loggedIn: false, role: null, initials: 'G' });
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+        await signOut(auth);
+        toast({ title: "Logged Out" });
+        router.push('/'); // Redirect to homepage after logout
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: "Logout Failed" });
+    }
+  };
+  
+  // Don't render header for admin pages (they have their own layout)
+  if (pathname.startsWith('/admin')) {
     return null;
   }
+  
+  const getDashboardUrl = () => {
+      if (userState?.role === 'Ride Owner') return '/owner/dashboard';
+      if (userState?.role === 'Customer') return '/customer/home';
+      return '/login';
+  }
+
+  const navLinks = [
+    { href: '/search', label: 'Search', icon: Search },
+    ...(userState?.role === 'Ride Owner' ? [{ href: '/owner/listings/add', label: 'List a Ride', icon: PlusCircle }] : []),
+    { href: '/help', label: 'Help', icon: LifeBuoy },
+  ];
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -73,7 +138,7 @@ export function Header() {
                     </div>
                     <nav className="grid gap-2">
                         {navLinks.map((link) => (
-                           <Link key={link.label} href={link.label} className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary" prefetch={false}>
+                           <Link key={link.label} href={link.href} className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary" prefetch={false}>
                                 <link.icon className="h-4 w-4" />
                                 {link.label}
                             </Link>
@@ -100,20 +165,38 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
                 <Avatar>
-                  <AvatarImage src="https://picsum.photos/seed/user-avatar/40/40" />
+                  <AvatarImage src={userState?.avatarUrl} />
                   <AvatarFallback>
-                    <CircleUser />
+                    {userState ? userState.initials : <CircleUser />}
                   </AvatarFallback>
                 </Avatar>
                 <span className="sr-only">Toggle user menu</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/login">Sign In / Sign Up</Link>
-              </DropdownMenuItem>
+              {userState?.loggedIn ? (
+                <>
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href={getDashboardUrl()}><LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard</Link>
+                  </DropdownMenuItem>
+                   <DropdownMenuItem asChild>
+                    <Link href={userState.role === 'Ride Owner' ? '/owner/profile' : '/customer/profile'}><User className="mr-2 h-4 w-4" /> Profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href="/login">Sign In / Sign Up</Link>
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -121,5 +204,3 @@ export function Header() {
     </header>
   );
 }
-
-    

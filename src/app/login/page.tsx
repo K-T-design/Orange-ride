@@ -98,7 +98,7 @@ type SignupFormData = z.infer<typeof signupSchema>;
 const ADMIN_UID = 'XgQfA6sCVThsWw2g4iJpYc3F5yG3';
 
 // --- Login Component ---
-function LoginForm() {
+function LoginForm({ onSuccessfulSignup }: { onSuccessfulSignup: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -117,34 +117,28 @@ function LoginForm() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
-
-      if (user.uid === ADMIN_UID) {
-        toast({ title: 'Admin Login Successful' });
-        router.push('/admin');
-        return;
+      
+      const adminEmails = ['admin@example.com', 'superadmin@example.com'];
+      if (adminEmails.includes(user.email ?? '')) {
+         toast({ title: 'Admin Login Successful' });
+         router.push('/admin');
+         return;
       }
 
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
 
       if (userDoc.exists()) {
-        const userData = userDoc.data();
-        const role = userData.role;
         toast({
           title: 'Login Successful',
           description: `Welcome back!`,
         });
-
-        if (role === 'Ride Owner') {
-          router.push('/owner/dashboard');
-        } else if (role === 'Customer') {
-          router.push('/customer/home');
-        } else {
-          router.push('/'); // Fallback
-        }
+        router.push('/'); // Redirect all users to the unified homepage
       } else {
+        // This case should ideally not happen if signup is done correctly
         await auth.signOut();
-        toast({ variant: 'destructive', title: 'User data not found. Please contact support.' });
+        toast({ variant: 'destructive', title: 'User data not found. Please sign up again.' });
+        onSuccessfulSignup(); // Switch to signup tab
       }
     } catch (error: any) {
       let errorMessage = 'An unknown error occurred. Please check your internet connection.';
@@ -280,10 +274,9 @@ function LoginForm() {
 }
 
 // --- Signup Component ---
-function SignupForm() {
+function SignupForm({ onSuccessfulSignup }: { onSuccessfulSignup: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const [role, setRole] = useState<'Customer' | 'Ride Owner'>('Customer');
-  const router = useRouter();
   const { toast } = useToast();
 
   const form = useForm<SignupFormData>({
@@ -302,7 +295,7 @@ function SignupForm() {
   const handleTabChange = (value: string) => {
     const newRole = value as 'Customer' | 'Ride Owner';
     setRole(newRole);
-    form.setValue('role', newRole);
+    form.setValue('role', newRole, { shouldValidate: true });
     if (newRole === 'Customer') {
       form.unregister('businessName');
       form.unregister('businessType');
@@ -323,39 +316,47 @@ function SignupForm() {
         role: values.role,
         createdAt: serverTimestamp(),
       };
+      
+      const userDocRef = doc(db, 'users', user.uid);
 
       if (values.role === 'Ride Owner') {
-        await setDoc(doc(db, 'users', user.uid), {
-          ...userData,
-          businessName: values.businessName,
-          businessType: values.businessType,
-        });
-
-        await setDoc(doc(db, 'rideOwners', user.uid), {
-          name: values.businessName,
-          contactPerson: values.fullName,
-          contact: values.email,
-          plan: 'None',
-          status: 'Pending Approval',
-          createdAt: serverTimestamp(),
-        });
-
-        await addDoc(collection(db, 'notifications'), {
-          message: `New ride owner '${values.businessName}' signed up and needs approval.`,
-          ownerName: values.businessName,
-          eventType: 'new_owner',
-          createdAt: serverTimestamp(),
-          read: false,
-        });
+        const ownerDocRef = doc(db, 'rideOwners', user.uid);
+        const notificationRef = collection(db, 'notifications');
+        
+        await Promise.all([
+            setDoc(userDocRef, {
+                ...userData,
+                businessName: values.businessName,
+                businessType: values.businessType,
+            }),
+            setDoc(ownerDocRef, {
+                name: values.businessName,
+                businessType: values.businessType,
+                contactPerson: values.fullName,
+                contact: values.email,
+                plan: 'None',
+                status: 'Pending Approval',
+                createdAt: serverTimestamp(),
+            }),
+            addDoc(notificationRef, {
+                message: `New ride owner '${values.businessName}' signed up and needs approval.`,
+                ownerName: values.businessName,
+                eventType: 'new_owner',
+                createdAt: serverTimestamp(),
+                read: false,
+            })
+        ]);
+        
       } else {
-        await setDoc(doc(db, 'users', user.uid), userData);
+        await setDoc(userDocRef, userData);
       }
 
       toast({
         title: 'Account Created!',
         description: 'Your account has been successfully created. Please sign in.',
       });
-      // In a real app, you might want to switch to the login tab automatically
+      onSuccessfulSignup(); // Switch to the sign-in tab
+
     } catch (error: any) {
       let errorMessage = 'An unknown error occurred. Check your internet connection.';
       if (error.code === 'auth/email-already-in-use') {
@@ -583,7 +584,7 @@ export default function AuthPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <LoginForm />
+                <LoginForm onSuccessfulSignup={() => setActiveTab('signin')} />
               </CardContent>
             </TabsContent>
             <TabsContent value="signup">
@@ -594,7 +595,7 @@ export default function AuthPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <SignupForm />
+                <SignupForm onSuccessfulSignup={() => setActiveTab('signin')} />
               </CardContent>
             </TabsContent>
           </Tabs>
