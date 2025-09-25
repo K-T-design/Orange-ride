@@ -39,11 +39,13 @@ const getPageTitle = (pathname: string) => {
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
 
   useEffect(() => {
+    setIsClient(true);
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
         if (pathname !== '/admin/login') {
@@ -103,6 +105,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       return <>{children}</>;
   }
   
+  if (!isClient) {
+    return (
+        <div className="flex h-screen items-center justify-center">
+             <div className="flex flex-col items-center gap-4">
+                <Car className="h-12 w-12 animate-pulse text-primary" />
+             </div>
+        </div>
+    );
+  }
+
   return (
     <SidebarProvider>
         <Sidebar>
