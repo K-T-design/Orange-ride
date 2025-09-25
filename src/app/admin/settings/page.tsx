@@ -11,7 +11,7 @@ import { PlusCircle, Trash2, Database, Edit, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
-import { seedableOwners, seedableListings, seedableNotifications, seedableCategories, seedableLocations, seedableSubscriptions, seedableReports, seedableAdvertisements } from "@/lib/data";
+import { seedableOwners, seedableListings, seedableNotifications, seedableCategories, seedableLocations, seedableSubscriptions, seedableReports, seedableAdvertisements, seedableFaqs } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -73,6 +73,7 @@ export default function SettingsPage() {
             seedableSubscriptions.forEach(sub => batch.set(doc(collection(db, 'subscriptions'), sub.id), sub));
             seedableReports.forEach(report => batch.set(doc(collection(db, 'reports'), report.id), report));
             seedableAdvertisements.forEach(ad => batch.set(doc(collection(db, 'advertisements'), ad.id), ad));
+            seedableFaqs.forEach(faq => batch.set(doc(collection(db, 'faqs'), faq.id), faq));
 
 
             await batch.commit();

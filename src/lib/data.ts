@@ -295,5 +295,13 @@ export const seedableAdvertisements = [
   { id: 'AD03', description: 'Travel in comfort. Book a private car today.', imageUrl: 'https://picsum.photos/seed/ad3/1200/400', link: '/search?type=Car', isActive: false, createdAt: Timestamp.now(), priority: 0 },
 ];
 
+export const seedableFaqs = [
+  { id: 'FAQ01', question: 'How do I search for a ride?', answer: 'Simply enter your pickup location, an optional destination, and ride type on the homepage search bar and click "Search".', category: 'Customer', createdAt: Timestamp.now() },
+  { id: 'FAQ02', question: 'How do I contact a ride owner?', answer: 'On any ride card or ride details page, click the "Contact Owner" button to find options like Call, WhatsApp, or Email.', category: 'Customer', createdAt: Timestamp.now() },
+  { id: 'FAQ03', question: 'Are the prices negotiable?', answer: 'Prices are set by the ride owners. You can discuss the final price directly with them when you make contact.', category: 'Customer', createdAt: Timestamp.now() },
+  { id: 'FAQ04', question: 'How do I list my vehicle?', answer: 'First, sign up as a "Ride Owner". After your account is approved, you must subscribe to a plan. Once subscribed, you can add your vehicles through your Owner Dashboard.', category: 'Ride Owner', createdAt: Timestamp.now() },
+  { id: 'FAQ05', question: 'What are the subscription plans?', answer: 'We offer Weekly, Monthly, and Yearly plans with different listing limits. You can view all plans on the "Subscription & Billing" page in your dashboard.', category: 'Ride Owner', createdAt: Timestamp.now() },
+  { id: 'FAQ06', question: 'Why is my listing "Pending"?', answer: 'All new listings must be approved by an admin to ensure quality and safety. You will be notified once your listing is approved.', category: 'Ride Owner', createdAt: Timestamp.now() },
+];
 
 export { NIGERIAN_CITIES, vehicleTypes, planLimits };
