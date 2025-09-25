@@ -2,7 +2,7 @@
 'use client';
 
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
-import { Home, Users, Car, CreditCard, Flag, Settings, LogOut, Megaphone, Bell } from "lucide-react";
+import { Home, Users, Car, CreditCard, Flag, Settings, LogOut, Megaphone, Bell, Globe } from "lucide-react";
 import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -14,6 +14,7 @@ import Link from "next/link";
 
 const adminNavLinks = [
   { href: "/admin", label: "Dashboard", icon: Home },
+  { href: "/", label: "Go to Homepage", icon: Globe },
   { href: "/admin/owners", label: "Ride Owners", icon: Users },
   { href: "/admin/listings", label: "Listings", icon: Car },
   { href: "/admin/subscriptions", label: "Subscriptions", icon: CreditCard },
@@ -27,7 +28,7 @@ const adminNavLinks = [
 const getPageTitle = (pathname: string) => {
     if (pathname === '/admin') return 'Dashboard';
     for (const link of adminNavLinks) {
-        if (pathname.startsWith(link.href) && link.href !== '/admin') {
+        if (pathname.startsWith(link.href) && link.href !== '/admin' && link.href !== '/') {
             return link.label;
         }
     }
