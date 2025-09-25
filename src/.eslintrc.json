@@ -1,0 +1,17 @@
+
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["firebase-admin", "firebase-admin/*"],
+            "message": "The Firebase Admin SDK is for server-side use only. Please use the client SDK from '@lib/firebase' instead."
+          }
+        ]
+      }
+    ]
+  }
+}
