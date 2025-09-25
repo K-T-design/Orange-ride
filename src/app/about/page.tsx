@@ -1,4 +1,5 @@
 
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Eye, Rocket, Search, ShieldCheck } from "lucide-react";
@@ -25,20 +26,19 @@ async function getAboutContent() {
         vision: "To be Nigeria's most trusted and preferred digital transportation marketplace, transforming the way people travel by making it simpler, safer, and more efficient for everyone.",
         values: ["Customer-Centric", "Safety First", "Integrity", "Innovation", "Community"],
         howItWorks: [
-            { icon: Search, title: "Search for a Ride", description: "Enter your pickup and destination to browse available vehicles." },
-            { icon: CheckCircle, title: "Choose the Best Fit", description: "Compare prices and schedules to find the perfect ride for you." },
-            { icon: Rocket, title: "Enjoy Your Trip", description: "Connect with the owner and embark on a smooth journey." },
+            "Search for a Ride: Enter your pickup and destination to browse available vehicles.",
+            "Choose the Best Fit: Compare prices and schedules to find the perfect ride for you.",
+            "Enjoy Your Trip: Connect with the owner and embark on a smooth journey.",
         ],
         whyChooseUs: ["Wide Range of Options", "Transparent Pricing", "Direct Contact with Owners", "Safety and Reliability"],
     };
 }
 
 
-const StepCard = ({ icon, title, description, step }: { icon: React.ReactNode, title: string, description: string, step: number }) => (
-    <div className="relative">
-        <div className="absolute -left-4 top-4 text-6xl font-bold text-primary/10 -z-10">{step}</div>
-        <Card className="p-6 text-center flex flex-col items-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground mb-4">
+const StepCard = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) => (
+    <div className="relative text-center flex flex-col items-center">
+        <Card className="p-6 w-full">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground mb-4 mx-auto">
                 {icon}
             </div>
             <h3 className="text-xl font-semibold mb-2">{title}</h3>
@@ -90,7 +90,9 @@ export default async function AboutUsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                        {content.howItWorks.map((step: string, index: number) => {
                            const Icon = howItWorksIcons[index] || Search;
-                           return <StepCard key={index} icon={<Icon className="h-8 w-8" />} title={`Step ${index + 1}`} description={step} step={index + 1} />
+                           const [title, ...descriptionParts] = step.split(':');
+                           const description = descriptionParts.join(':').trim();
+                           return <StepCard key={index} icon={<Icon className="h-8 w-8" />} title={title} description={description} />
                        })}
                     </div>
                 </div>
