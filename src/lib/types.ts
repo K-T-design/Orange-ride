@@ -20,4 +20,6 @@ export type Ride = {
   isPromoted: boolean;
   schedule: string;
   savedAt?: Timestamp;
+  capacity?: number;
+  description?: string;
 };

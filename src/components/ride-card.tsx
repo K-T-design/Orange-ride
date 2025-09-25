@@ -6,7 +6,7 @@ import type { Ride } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Mail, Phone, Calendar as CalendarIcon, MessageCircle, Star } from 'lucide-react';
+import { Mail, Phone, Calendar as CalendarIcon, Star } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/icons/whatsapp-icon';
 import { placeholderImages } from '@/lib/placeholder-images';
 import {
@@ -20,6 +20,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { collection, addDoc, deleteDoc, query, where, getDocs, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 type RideCardProps = {
   ride: Ride;
@@ -40,7 +41,8 @@ export function RideCard({ ride }: RideCardProps) {
       return () => unsubscribe();
   }, [user, ride.id]);
 
-  const handleSaveToggle = async () => {
+  const handleSaveToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card link navigation
     if (!user) {
       toast({
         variant: 'destructive',
@@ -75,52 +77,59 @@ export function RideCard({ ride }: RideCardProps) {
 
 
   return (
-    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col h-full">
-      <CardHeader className="p-0 relative">
-        <div className="absolute top-2 right-2 z-10 flex gap-2">
-            {ride.isPromoted && (
-              <Badge className="bg-primary">Promoted</Badge>
-            )}
-        </div>
-         <Button 
-            variant="ghost" 
-            size="icon" 
-            className="absolute top-2 left-2 z-10 bg-black/30 text-white hover:bg-black/50 hover:text-white"
-            onClick={handleSaveToggle}
-            aria-label={isSaved ? 'Unsave ride' : 'Save ride'}
-        >
-            <Star className={`h-5 w-5 transition-colors ${isSaved ? 'fill-yellow-400 text-yellow-400' : 'fill-transparent'}`} />
-        </Button>
-        {image && (
-          <Image
-            src={image.imageUrl}
-            alt={image.description || ride.name}
-            width={600}
-            height={400}
-            className="aspect-[3/2] w-full object-cover"
-            data-ai-hint={image.imageHint}
-          />
-        )}
-      </CardHeader>
-      <CardContent className="p-4 flex-grow">
-        <div className="flex justify-between items-start">
-            <div>
-                <p className="text-sm text-muted-foreground">{ride.type}</p>
-                <h3 className="text-lg font-bold font-headline">{ride.name}</h3>
+    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col h-full group">
+        <Link href={`/ride/${ride.id}`} className="flex flex-col flex-grow">
+          <CardHeader className="p-0 relative">
+            <div className="absolute top-2 right-2 z-10 flex gap-2">
+                {ride.isPromoted && (
+                  <Badge className="bg-primary">Promoted</Badge>
+                )}
             </div>
-            <p className="text-xl font-bold text-primary whitespace-nowrap">
-                ₦{ride.price.toLocaleString()}
+             <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute top-2 left-2 z-10 bg-black/30 text-white hover:bg-black/50 hover:text-white"
+                onClick={handleSaveToggle}
+                aria-label={isSaved ? 'Unsave ride' : 'Save ride'}
+            >
+                <Star className={`h-5 w-5 transition-colors ${isSaved ? 'fill-yellow-400 text-yellow-400' : 'fill-transparent'}`} />
+            </Button>
+            {image && (
+              <div className="aspect-[3/2] w-full relative">
+                <Image
+                    src={image.imageUrl}
+                    alt={image.description || ride.name}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    data-ai-hint={image.imageHint}
+                />
+              </div>
+            )}
+          </CardHeader>
+          <CardContent className="p-4 flex-grow">
+            <div className="flex justify-between items-start">
+                <div>
+                    <p className="text-sm text-muted-foreground">{ride.type}</p>
+                    <h3 className="text-lg font-bold font-headline group-hover:text-primary transition-colors">{ride.name}</h3>
+                </div>
+                <p className="text-xl font-bold text-primary whitespace-nowrap">
+                    ₦{ride.price.toLocaleString()}
+                </p>
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+                Owner: {ride.owner.name}
             </p>
-        </div>
-        <p className="text-sm text-muted-foreground mt-2">
-            Owner: {ride.owner.name}
-        </p>
-        <div className="flex items-center text-sm text-muted-foreground mt-2">
-            <CalendarIcon className="h-4 w-4 mr-2" />
-            <span>{ride.schedule}</span>
-        </div>
-      </CardContent>
-      <CardFooter className="p-4 bg-muted/50 flex justify-end gap-2">
+            <div className="flex items-center text-sm text-muted-foreground mt-2">
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                <span>{ride.schedule}</span>
+            </div>
+          </CardContent>
+          <CardFooter className="p-4 bg-muted/50 mt-auto">
+             <span className="text-sm font-semibold text-primary w-full text-center">View Details &rarr;</span>
+          </CardFooter>
+      </Link>
+      <div className="p-4 border-t flex justify-end gap-2">
          <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button>Contact Owner</Button>
@@ -146,7 +155,7 @@ export function RideCard({ ride }: RideCardProps) {
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
-      </CardFooter>
+      </div>
     </Card>
   );
 }
