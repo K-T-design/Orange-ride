@@ -20,6 +20,7 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { RideSearchForm } from '@/components/ride-search-form';
 
 // This new client component will handle the interactive filtering and sorting
 function SearchResultsClient({ initialResults }: { initialResults: Ride[] }) {
@@ -187,9 +188,16 @@ const SearchResults = async () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-2 font-headline">
+      <div className="mb-8 p-6 bg-card rounded-lg shadow-sm border">
+         <h1 className="text-2xl font-bold mb-4 font-headline">
+            Find a new ride
+         </h1>
+        <RideSearchForm />
+      </div>
+
+      <h2 className="text-3xl font-bold mb-2 font-headline">
         Search Results
-      </h1>
+      </h2>
       <p className="text-muted-foreground mb-6">
         Showing rides
         {pickup && <> from <span className="font-semibold text-primary">{pickup}</span></>}
@@ -219,6 +227,8 @@ const SearchPage = () => {
 
 const SearchSkeleton = () => (
   <div className="container mx-auto px-4 py-8">
+    <Skeleton className="h-40 w-full mb-8" />
+
     <div className="h-9 w-1/3 bg-muted rounded-md animate-pulse mb-2" />
     <div className="h-6 w-1/2 bg-muted rounded-md animate-pulse mb-6" />
     <Skeleton className="h-32 w-full mb-8" />
