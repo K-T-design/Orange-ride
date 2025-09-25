@@ -55,7 +55,7 @@ export function Footer() {
             <h3 className="font-semibold mb-4">Company</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-primary transition-colors" prefetch={false}>
+                <Link href="/about" className="text-muted-foreground hover:text-primary transition-colors" prefetch={false}>
                   About Us
                 </Link>
               </li>

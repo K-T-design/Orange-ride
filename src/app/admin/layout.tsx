@@ -2,7 +2,7 @@
 'use client';
 
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
-import { Home, Users, Car, CreditCard, Flag, Settings, LogOut, Megaphone, Bell, HelpCircle } from "lucide-react";
+import { Home, Users, Car, CreditCard, Flag, Settings, LogOut, Megaphone, Bell, HelpCircle, Info } from "lucide-react";
 import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -20,6 +20,7 @@ const adminNavLinks = [
   { href: "/admin/advertisements", label: "Advertisements", icon: Megaphone },
   { href: "/admin/notifications", label: "Notifications", icon: Bell },
   { href: "/admin/faqs", label: "FAQs", icon: HelpCircle },
+  { href: "/admin/about", label: "About Us", icon: Info },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
