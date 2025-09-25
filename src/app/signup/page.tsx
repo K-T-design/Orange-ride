@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Car, Loader2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const passwordValidation = z.string()
   .min(8, 'Password must be at least 8 characters.')
@@ -49,6 +50,9 @@ const baseSchema = z.object({
   phone: z.string().min(10, 'Please enter a valid phone number.'),
   password: passwordValidation,
   confirmPassword: z.string(),
+  terms: z.boolean().refine((val) => val === true, {
+    message: 'You must accept the terms and conditions.',
+  }),
 });
 
 const customerSchema = baseSchema.extend({
@@ -73,6 +77,7 @@ type FormData = z.infer<typeof formSchema>;
 
 export default function SignUpPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [role, setRole] = useState<'Customer' | 'Ride Owner'>('Customer');
   const router = useRouter();
   const { toast } = useToast();
   
@@ -85,19 +90,14 @@ export default function SignUpPage() {
       phone: '',
       password: '',
       confirmPassword: '',
+      terms: false,
     },
   });
 
   const handleTabChange = (value: string) => {
     const newRole = value as 'Customer' | 'Ride Owner';
-    form.setValue('role', newRole, { shouldValidate: true });
-    
-    const currentValues = form.getValues();
-    const defaultValuesForRole = newRole === 'Customer' ? 
-      {...currentValues, role: 'Customer' } : 
-      {...currentValues, role: 'Ride Owner', businessName: '', businessType: ''};
-    
-    form.reset(defaultValuesForRole);
+    setRole(newRole);
+    form.setValue('role', newRole);
   };
 
   const onSubmit = async (values: FormData) => {
@@ -172,7 +172,7 @@ export default function SignUpPage() {
             <span className="text-2xl font-bold font-headline">Orange Rides</span>
           </Link>
         </div>
-        <Tabs defaultValue="Customer" className="w-full" onValueChange={handleTabChange}>
+        <Tabs value={role} className="w-full" onValueChange={handleTabChange}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="Customer">I'm a Customer</TabsTrigger>
             <TabsTrigger value="Ride Owner">I'm a Ride Owner</TabsTrigger>
@@ -181,7 +181,7 @@ export default function SignUpPage() {
             <CardHeader className="text-center">
               <CardTitle className="text-2xl font-headline">Create an Account</CardTitle>
               <CardDescription>
-                {form.getValues('role') === 'Customer'
+                {role === 'Customer'
                   ? 'Find and book rides with ease.'
                   : 'List your vehicle and start earning.'}
               </CardDescription>
@@ -189,60 +189,13 @@ export default function SignUpPage() {
             <CardContent>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <TabsContent value="Customer" className="m-0 p-0 space-y-4">
-                    {/* Common fields will render here */}
-                  </TabsContent>
-                  <TabsContent value="Ride Owner" className="m-0 p-0 space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="businessName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Business Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g., City Express" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="businessType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Business Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select your business type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Transport Company">Transport Company</SelectItem>
-                              <SelectItem value="Individual Driver">Individual Driver</SelectItem>
-                              <SelectItem value="Booking Company">Booking Company</SelectItem>
-                              <SelectItem value="Vehicle Rental Service">Vehicle Rental Service</SelectItem>
-                              <SelectItem value="Taxi Service">Taxi Service</SelectItem>
-                              <SelectItem value="Bus Service">Bus Service</SelectItem>
-                              <SelectItem value="Private Rides Service">Private Rides Service</SelectItem>
-                              <SelectItem value="Shuttle Service">Shuttle Service</SelectItem>
-                              <SelectItem value="Logistics Service">Logistics Service</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </TabsContent>
-
                   {/* Common Fields */}
                   <FormField
                     control={form.control}
                     name="fullName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Full Name</FormLabel>
+                        <FormLabel>{role === 'Customer' ? 'Full Name' : 'Contact Person Full Name'}</FormLabel>
                         <FormControl>
                           <Input placeholder="John Doe" {...field} />
                         </FormControl>
@@ -250,6 +203,53 @@ export default function SignUpPage() {
                       </FormItem>
                     )}
                   />
+
+                  {role === 'Ride Owner' && (
+                    <>
+                      <FormField
+                          control={form.control}
+                          name="businessName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Business Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="e.g., City Express" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="businessType"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Business Type</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select your business type" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="Transport Company">Transport Company</SelectItem>
+                                  <SelectItem value="Individual Driver">Individual Driver</SelectItem>
+                                  <SelectItem value="Booking Company">Booking Company</SelectItem>
+                                  <SelectItem value="Vehicle Rental Service">Vehicle Rental Service</SelectItem>
+                                  <SelectItem value="Taxi Service">Taxi Service</SelectItem>
+                                  <SelectItem value="Bus Service">Bus Service</SelectItem>
+                                  <SelectItem value="Private Rides Service">Private Rides Service</SelectItem>
+                                  <SelectItem value="Shuttle Service">Shuttle Service</SelectItem>
+                                  <SelectItem value="Logistics Service">Logistics Service</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                    </>
+                  )}
+                  
                   <FormField
                     control={form.control}
                     name="email"
@@ -303,6 +303,30 @@ export default function SignUpPage() {
                     )}
                   />
 
+                  <FormField
+                    control={form.control}
+                    name="terms"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>
+                            Accept terms and conditions
+                          </FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            You agree to our Terms of Service and Privacy Policy.
+                          </p>
+                           <FormMessage />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Create Account
@@ -322,3 +346,5 @@ export default function SignUpPage() {
     </div>
   );
 }
+
+    
