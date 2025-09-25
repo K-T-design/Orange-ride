@@ -148,7 +148,7 @@ export default function CustomerDashboardPage() {
              <CardContent>
                <p className="text-xs text-muted-foreground">Update your contact details and password.</p>
                <Button variant="outline" size="sm" className="mt-4" asChild>
-                   <Link href="/profile">Go to Profile</Link>
+                   <Link href="/customer/profile">Go to Profile</Link>
                </Button>
              </CardContent>
            </Card>
