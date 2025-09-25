@@ -2,12 +2,53 @@
 import Image from 'next/image';
 import { RideSearchForm } from '@/components/ride-search-form';
 import { RideCard } from '@/components/ride-card';
-import { RIDES } from '@/lib/data';
 import { placeholderImages } from '@/lib/placeholder-images';
 import { AdCarousel } from '@/components/ad-carousel';
+import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Ride } from '@/lib/types';
 
-export default function Home() {
-  const featuredRides = RIDES.slice(0, 3);
+async function getFeaturedRides(): Promise<Ride[]> {
+  try {
+    // First, try to get up to 4 promoted rides
+    const promotedQuery = query(
+      collection(db, 'listings'),
+      where('isPromoted', '==', true),
+      where('status', '==', 'Approved'),
+      limit(4)
+    );
+    const promotedSnapshot = await getDocs(promotedQuery);
+    let rides = promotedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
+
+    // If there are fewer than 4 promoted rides, get the most recent approved rides to fill the gap
+    if (rides.length < 4) {
+      const needed = 4 - rides.length;
+      const recentQuery = query(
+        collection(db, 'listings'),
+        where('status', '==', 'Approved'),
+        orderBy('createdAt', 'desc'),
+        limit(needed)
+      );
+      const recentSnapshot = await getDocs(recentQuery);
+      const recentRides = recentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
+      
+      // Add recent rides only if they aren't already in the list (as a promoted ride)
+      const existingIds = new Set(rides.map(r => r.id));
+      const filteredRecentRides = recentRides.filter(r => !existingIds.has(r.id));
+      
+      rides = [...rides, ...filteredRecentRides];
+    }
+    
+    return rides;
+  } catch (error) {
+    console.error("Error fetching featured rides: ", error);
+    return []; // Return empty array on error
+  }
+}
+
+
+export default async function Home() {
+  const featuredRides = await getFeaturedRides();
   const heroImage = placeholderImages.find(p => p.id === 'hero');
 
   return (
@@ -41,20 +82,22 @@ export default function Home() {
         <AdCarousel />
       </section>
 
-      <section className="container mx-auto px-4">
-        <h2 className="text-3xl font-bold text-center mb-8 font-headline">Featured Rides</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {featuredRides.map((ride, index) => (
-            <div
-              key={ride.id}
-              className="animate-fade-in-up"
-              style={{ animationDelay: `${200 * index}ms` }}
-            >
-              <RideCard ride={ride} />
-            </div>
-          ))}
-        </div>
-      </section>
+      {featuredRides.length > 0 && (
+        <section className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-8 font-headline">Featured Rides</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {featuredRides.map((ride, index) => (
+              <div
+                key={ride.id}
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${200 * index}ms` }}
+              >
+                <RideCard ride={ride} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
