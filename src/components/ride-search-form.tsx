@@ -67,7 +67,7 @@ export function RideSearchForm() {
                     <FormControl>
                       <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <SelectTrigger className="pl-10 h-12 text-base md:rounded-r-none border-0 md:border-r">
+                        <SelectTrigger className="pl-10 h-12 text-base text-foreground md:rounded-r-none border-0 md:border-r">
                           <SelectValue placeholder="Pickup Location" />
                         </SelectTrigger>
                       </div>
