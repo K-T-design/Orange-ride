@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from "react";
@@ -246,11 +245,8 @@ export default function SettingsPage() {
             const publishedRef = doc(db, 'siteContent', contentName);
             await setDoc(publishedRef, { content: draftContent, publishedAt: new Date() });
             setPublishedContent(draftContent);
-            if (contentName === 'privacyPolicy') {
-                await handleDiscardDraft('privacyPolicy', false);
-            } else {
-                 await handleDiscardDraft('termsAndConditions', false);
-            }
+            // After publishing, discard the now-stale draft
+            await handleDiscardDraft(contentName, false);
             toast({ title: 'Content Published', description: 'The changes are now live on your site.' });
         } catch (error) {
             console.error('Error publishing content:', error);
@@ -522,7 +518,7 @@ export default function SettingsPage() {
 
                 <TabsContent value="terms">
                      <EditorComponent 
-                        title="Terms & Conditions Editor"
+                        title="Terms &amp; Conditions Editor"
                         description="Edit the content using Markdown. Changes must be published to go live."
                         isLoading={isLoadingTerms}
                         draftContent={draftTerms}
@@ -611,5 +607,3 @@ export default function SettingsPage() {
             </Dialog>
         </div>
     );
-}
-
