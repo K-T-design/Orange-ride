@@ -206,8 +206,8 @@ export default function FaqsPage() {
                                                             Edit
                                                         </DropdownMenuItem>
                                                          <DropdownMenuItem onSelect={() => handleToggleActive(faq)}>
-                                                            <Switch checked={faq.isActive} className="mr-2 h-4 w-4" />
-                                                            Toggle Status
+                                                            <Switch checked={faq.isActive} onCheckedChange={() => {}} className="mr-2 h-4 w-4 pointer-events-none" />
+                                                            <span>Toggle Status</span>
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <AlertDialogTrigger asChild>
@@ -311,3 +311,5 @@ export default function FaqsPage() {
         </div>
     );
 }
+
+    
