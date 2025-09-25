@@ -1,5 +1,7 @@
 
 import { FaqAccordion } from "@/components/faq-accordion";
+import { HowItWorks } from "@/components/how-it-works";
+import { Separator } from "@/components/ui/separator";
 
 export default function HelpPage() {
   return (
@@ -10,6 +12,10 @@ export default function HelpPage() {
           Find answers to your questions about Orange Rides.
         </p>
       </div>
+
+      <HowItWorks />
+
+      <Separator className="my-16" />
 
       <FaqAccordion />
 
