@@ -73,7 +73,7 @@ export function Header() {
                     </div>
                     <nav className="grid gap-2">
                         {navLinks.map((link) => (
-                           <Link key={link.label} href={link.href} className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary" prefetch={false}>
+                           <Link key={link.label} href={link.label} className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary" prefetch={false}>
                                 <link.icon className="h-4 w-4" />
                                 {link.label}
                             </Link>
@@ -112,10 +112,7 @@ export function Header() {
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/login">Sign In</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/signup">Sign Up</Link>
+                <Link href="/login">Sign In / Sign Up</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -124,3 +121,5 @@ export function Header() {
     </header>
   );
 }
+
+    
