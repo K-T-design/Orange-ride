@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,6 +13,7 @@ type Faq = {
   question: string;
   answer: string;
   category: 'Customer' | 'Ride Owner';
+  isActive: boolean;
 };
 
 export function FaqAccordion() {
@@ -20,7 +21,11 @@ export function FaqAccordion() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, 'faqs'), orderBy('createdAt', 'asc'));
+    const q = query(
+        collection(db, 'faqs'), 
+        where('isActive', '==', true),
+        orderBy('createdAt', 'asc')
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const faqsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Faq));
       setFaqs(faqsData);

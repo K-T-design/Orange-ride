@@ -296,12 +296,14 @@ export const seedableAdvertisements = [
 ];
 
 export const seedableFaqs = [
-  { id: 'FAQ01', question: 'How do I search for a ride?', answer: 'Simply enter your pickup location, an optional destination, and ride type on the homepage search bar and click "Search".', category: 'Customer', createdAt: Timestamp.now() },
-  { id: 'FAQ02', question: 'How do I contact a ride owner?', answer: 'On any ride card or ride details page, click the "Contact Owner" button to find options like Call, WhatsApp, or Email.', category: 'Customer', createdAt: Timestamp.now() },
-  { id: 'FAQ03', question: 'Are the prices negotiable?', answer: 'Prices are set by the ride owners. You can discuss the final price directly with them when you make contact.', category: 'Customer', createdAt: Timestamp.now() },
-  { id: 'FAQ04', question: 'How do I list my vehicle?', answer: 'First, sign up as a "Ride Owner". After your account is approved, you must subscribe to a plan. Once subscribed, you can add your vehicles through your Owner Dashboard.', category: 'Ride Owner', createdAt: Timestamp.now() },
-  { id: 'FAQ05', question: 'What are the subscription plans?', answer: 'We offer Weekly, Monthly, and Yearly plans with different listing limits. You can view all plans on the "Subscription & Billing" page in your dashboard.', category: 'Ride Owner', createdAt: Timestamp.now() },
-  { id: 'FAQ06', question: 'Why is my listing "Pending"?', answer: 'All new listings must be approved by an admin to ensure quality and safety. You will be notified once your listing is approved.', category: 'Ride Owner', createdAt: Timestamp.now() },
+  { id: 'FAQ01', question: 'How do I search for a ride?', answer: 'Simply enter your pickup location, an optional destination, and ride type on the homepage search bar and click "Search".', category: 'Customer', isActive: true, createdAt: Timestamp.now() },
+  { id: 'FAQ02', question: 'How do I contact a ride owner?', answer: 'On any ride card or ride details page, click the "Contact Owner" button to find options like Call, WhatsApp, or Email.', category: 'Customer', isActive: true, createdAt: Timestamp.now() },
+  { id: 'FAQ03', question: 'Are the prices negotiable?', answer: 'Prices are set by the ride owners. You can discuss the final price directly with them when you make contact.', category: 'Customer', isActive: true, createdAt: Timestamp.now() },
+  { id: 'FAQ04', question: 'How do I list my vehicle?', answer: 'First, sign up as a "Ride Owner". After your account is approved, you must subscribe to a plan. Once subscribed, you can add your vehicles through your Owner Dashboard.', category: 'Ride Owner', isActive: true, createdAt: Timestamp.now() },
+  { id: 'FAQ05', question: 'What are the subscription plans?', answer: 'We offer Weekly (9 listings), Monthly (50 listings), and Yearly (unlimited listings) plans. You can view all plans on the "Subscription & Billing" page in your dashboard.', category: 'Ride Owner', isActive: true, createdAt: Timestamp.now() },
+  { id: 'FAQ06', question: 'Why is my listing "Pending"?', answer: 'All new listings must be approved by an admin to ensure quality and safety. You will be notified once your listing is approved.', category: 'Ride Owner', isActive: true, createdAt: Timestamp.now() },
+  { id: 'FAQ07', question: 'Can I edit my listing after it is published?', answer: 'Yes, you can edit your listing at any time from your "Manage Listings" page. Please note that edits may require re-approval from an admin.', category: 'Ride Owner', isActive: true, createdAt: Timestamp.now() },
+  { id: 'FAQ08', question: 'Is my personal information safe?', answer: 'Yes, we take data privacy seriously. Your personal information is stored securely and is only shared with ride owners when you initiate contact. Please see our Privacy Policy for more details.', category: 'Customer', isActive: true, createdAt: Timestamp.now() },
 ];
 
 export { NIGERIAN_CITIES, vehicleTypes, planLimits };

@@ -65,15 +65,15 @@ export default function SettingsPage() {
         try {
             const batch = writeBatch(db);
 
-            seedableOwners.forEach(owner => batch.set(doc(collection(db, 'rideOwners'), owner.id), owner));
-            seedableListings.forEach(listing => batch.set(doc(collection(db, 'listings'), listing.id), listing));
-            seedableNotifications.forEach(notification => batch.set(doc(collection(db, 'notifications'), notification.id), notification));
-            seedableCategories.forEach(category => batch.set(doc(collection(db, 'rideCategories'), category.id), { name: category.name, description: category.description }));
-            seedableLocations.forEach(location => batch.set(doc(collection(db, 'locations'), location.id), { name: location.name, state: location.state }));
-            seedableSubscriptions.forEach(sub => batch.set(doc(collection(db, 'subscriptions'), sub.id), sub));
-            seedableReports.forEach(report => batch.set(doc(collection(db, 'reports'), report.id), report));
-            seedableAdvertisements.forEach(ad => batch.set(doc(collection(db, 'advertisements'), ad.id), ad));
-            seedableFaqs.forEach(faq => batch.set(doc(collection(db, 'faqs'), faq.id), faq));
+            seedableOwners.forEach(owner => batch.set(doc(db, 'rideOwners', owner.id), owner));
+            seedableListings.forEach(listing => batch.set(doc(db, 'listings', listing.id), listing));
+            seedableNotifications.forEach(notification => batch.set(doc(db, 'notifications', notification.id), notification));
+            seedableCategories.forEach(category => batch.set(doc(db, 'rideCategories', category.id), { name: category.name, description: category.description }));
+            seedableLocations.forEach(location => batch.set(doc(db, 'locations', location.id), { name: location.name, state: location.state }));
+            seedableSubscriptions.forEach(sub => batch.set(doc(db, 'subscriptions', sub.id), sub));
+            seedableReports.forEach(report => batch.set(doc(db, 'reports', report.id), report));
+            seedableAdvertisements.forEach(ad => batch.set(doc(db, 'advertisements', ad.id), ad));
+            seedableFaqs.forEach(faq => batch.set(doc(db, 'faqs', faq.id), faq));
 
 
             await batch.commit();
