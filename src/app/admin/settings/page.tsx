@@ -7,14 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Trash2, Database, Edit, Loader2 } from "lucide-react";
+import { PlusCircle, Trash2, Database, Edit, Loader2, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDoc, setDoc } from "firebase/firestore";
 import { seedableOwners, seedableListings, seedableNotifications, seedableCategories, seedableLocations, seedableSubscriptions, seedableReports, seedableAdvertisements, seedableFaqs } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 
 type Category = {
   id: string;
@@ -41,6 +42,11 @@ export default function SettingsPage() {
     const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
     const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
 
+    const [privacyPolicy, setPrivacyPolicy] = useState('');
+    const [isLoadingPolicy, setIsLoadingPolicy] = useState(true);
+    const [isSavingPolicy, setIsSavingPolicy] = useState(false);
+
+
     useEffect(() => {
         const unsubCategories = onSnapshot(collection(db, "rideCategories"), (snapshot) => {
             const cats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
@@ -54,11 +60,32 @@ export default function SettingsPage() {
             setIsLoading(prev => ({...prev, locations: false}));
         });
 
+        const fetchPrivacyPolicy = async () => {
+            setIsLoadingPolicy(true);
+            try {
+                const policyRef = doc(db, 'siteContent', 'privacyPolicy');
+                const docSnap = await getDoc(policyRef);
+                if (docSnap.exists()) {
+                    setPrivacyPolicy(docSnap.data().content);
+                } else {
+                    // If it doesn't exist, we can set a default value or leave it empty
+                    setPrivacyPolicy('The privacy policy has not been set yet.');
+                }
+            } catch (error) {
+                console.error("Error fetching privacy policy:", error);
+                toast({ variant: 'destructive', title: 'Failed to load privacy policy.' });
+            } finally {
+                setIsLoadingPolicy(false);
+            }
+        };
+
+        fetchPrivacyPolicy();
+
         return () => {
             unsubCategories();
             unsubLocations();
         }
-    }, []);
+    }, [toast]);
 
     const handleSeedDatabase = async () => {
         setIsSeeding(true);
@@ -170,6 +197,20 @@ export default function SettingsPage() {
             toast({ variant: "destructive", title: "Delete Failed" });
         }
     };
+    
+    const handleSavePolicy = async () => {
+        setIsSavingPolicy(true);
+        try {
+            const policyRef = doc(db, 'siteContent', 'privacyPolicy');
+            await setDoc(policyRef, { content: privacyPolicy });
+            toast({ title: 'Privacy Policy Updated', description: 'The changes are now live on your site.' });
+        } catch (error) {
+            console.error('Error saving policy:', error);
+            toast({ variant: 'destructive', title: 'Failed to save policy.' });
+        } finally {
+            setIsSavingPolicy(false);
+        }
+    };
 
     const openCategoryDialog = (category: Category | null = null) => {
         setCurrentCategory(category);
@@ -186,9 +227,10 @@ export default function SettingsPage() {
             <h1 className="text-3xl font-bold font-headline">Settings</h1>
 
             <Tabs defaultValue="categories">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="categories">Categories</TabsTrigger>
                     <TabsTrigger value="locations">Locations</TabsTrigger>
+                    <TabsTrigger value="policy">Privacy Policy</TabsTrigger>
                     <TabsTrigger value="data">Data</TabsTrigger>
                 </TabsList>
 
@@ -302,6 +344,36 @@ export default function SettingsPage() {
                                     ))}
                                 </div>
                             )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                
+                <TabsContent value="policy">
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle>Privacy Policy Editor</CardTitle>
+                                    <CardDescription>Edit the content of your site's privacy policy. The text supports Markdown for formatting.</CardDescription>
+                                </div>
+                                 <Button onClick={handleSavePolicy} disabled={isSavingPolicy}>
+                                    {isSavingPolicy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                    {isSavingPolicy ? 'Saving...' : 'Save Policy'}
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                           {isLoadingPolicy ? (
+                                <Skeleton className="w-full h-96" />
+                           ) : (
+                                <Textarea
+                                    value={privacyPolicy}
+                                    onChange={(e) => setPrivacyPolicy(e.target.value)}
+                                    rows={25}
+                                    placeholder="Enter your privacy policy content here..."
+                                    className="font-mono text-sm"
+                                />
+                           )}
                         </CardContent>
                     </Card>
                 </TabsContent>
