@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,18 +14,37 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2, Send } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const notificationSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters long.'),
   message: z.string().min(10, 'Message must be at least 10 characters long.'),
-  recipientType: z.enum(['all', 'owners', 'customers']),
+  recipientType: z.enum(['all', 'owners', 'customers', 'specific']),
+  specificUserId: z.string().optional(),
   link: z.string().url().optional().or(z.literal('')),
+}).refine(data => {
+    if (data.recipientType === 'specific') {
+        return !!data.specificUserId;
+    }
+    return true;
+}, {
+    message: "Please select a specific user.",
+    path: ["specificUserId"],
 });
+
 
 type NotificationFormData = z.infer<typeof notificationSchema>;
 
+type User = {
+    id: string;
+    fullName: string;
+    email: string;
+};
+
 export default function NotificationsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<NotificationFormData>({
@@ -38,33 +57,65 @@ export default function NotificationsPage() {
     },
   });
 
+  const recipientType = form.watch('recipientType');
+
+  useEffect(() => {
+    async function fetchUsers() {
+      setIsLoadingUsers(true);
+      try {
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        const usersList = usersSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as User));
+        setUsers(usersList);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        toast({ variant: 'destructive', title: 'Failed to load users.' });
+      } finally {
+        setIsLoadingUsers(false);
+      }
+    }
+    if (recipientType === 'specific') {
+      fetchUsers();
+    }
+  }, [recipientType, toast]);
+
   const onSubmit: SubmitHandler<NotificationFormData> = async (values) => {
     setIsSubmitting(true);
     try {
       const usersCollectionRef = collection(db, 'users');
       let usersQuery;
 
-      switch (values.recipientType) {
-        case 'owners':
-          usersQuery = query(usersCollectionRef, where('role', '==', 'Ride Owner'));
-          break;
-        case 'customers':
-          // Assuming customers might not have a role field or it's different.
-          // For this example, let's assume 'Customer' role exists.
-          usersQuery = query(usersCollectionRef, where('role', '==', 'Customer'));
-          break;
-        case 'all':
-        default:
-          usersQuery = query(usersCollectionRef);
-          break;
+      if (values.recipientType === 'specific') {
+        if (!values.specificUserId) {
+            toast({ variant: 'destructive', title: 'Please select a user.' });
+            setIsSubmitting(false);
+            return;
+        }
+        usersQuery = query(usersCollectionRef, where('__name__', '==', values.specificUserId));
+      } else {
+        switch (values.recipientType) {
+            case 'owners':
+            usersQuery = query(usersCollectionRef, where('role', '==', 'Ride Owner'));
+            break;
+            case 'customers':
+            usersQuery = query(usersCollectionRef, where('role', '==', 'Customer'));
+            break;
+            case 'all':
+            default:
+            usersQuery = query(usersCollectionRef);
+            break;
+        }
       }
+
 
       const querySnapshot = await getDocs(usersQuery);
       if (querySnapshot.empty) {
         toast({
           variant: 'destructive',
           title: 'No recipients found',
-          description: 'There are no users matching the selected recipient type.',
+          description: 'There are no users matching the selected criteria.',
         });
         setIsSubmitting(false);
         return;
@@ -77,13 +128,12 @@ export default function NotificationsPage() {
         link: values.link || null,
         read: false,
         createdAt: serverTimestamp(),
-        eventType: 'announcement', // As per prompt, this is an example eventType
+        eventType: 'announcement',
       };
 
       querySnapshot.forEach((userDoc) => {
-        // Create a notification in each user's subcollection
         const userNotificationsRef = collection(db, 'users', userDoc.id, 'notifications');
-        const newNotifRef = doc(userNotificationsRef); // Firestore will generate an ID
+        const newNotifRef = doc(userNotificationsRef);
         batch.set(newNotifRef, notificationData);
       });
 
@@ -174,6 +224,7 @@ export default function NotificationsPage() {
                           <SelectItem value="all">All Users</SelectItem>
                           <SelectItem value="owners">Ride Owners Only</SelectItem>
                           <SelectItem value="customers">Customers Only</SelectItem>
+                          <SelectItem value="specific">Specific User</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormDescription>
@@ -201,6 +252,40 @@ export default function NotificationsPage() {
                   )}
                 />
               </div>
+
+              {recipientType === 'specific' && (
+                isLoadingUsers ? (
+                    <div className="space-y-2">
+                        <Skeleton className="h-5 w-24" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                ) : (
+                    <FormField
+                    control={form.control}
+                    name="specificUserId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Select Specific User</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a user to send to" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {users.map(user => (
+                                <SelectItem key={user.id} value={user.id}>
+                                    {user.fullName} ({user.email})
+                                </SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                )
+              )}
 
               <div className="flex justify-end">
                 <Button type="submit" disabled={isSubmitting}>
