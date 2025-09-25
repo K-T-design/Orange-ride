@@ -28,6 +28,7 @@ const NIGERIAN_CITIES = [
 const vehicleTypes = ['Car', 'Bus', 'Keke', 'Bike', 'VIP'];
 
 const planLimits = {
+  'None': 0,
   'Weekly': 9,
   'Monthly': 50,
   'Yearly': Infinity,

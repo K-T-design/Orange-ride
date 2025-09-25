@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -334,5 +333,3 @@ export function ListingForm({ onSubmit, isSubmitting, initialData, submitButtonT
     </Form>
   );
 }
-
-    
