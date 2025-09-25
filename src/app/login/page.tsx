@@ -29,10 +29,12 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Car, Loader2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
   password: z.string().min(1, { message: 'Password is required.' }),
+  rememberMe: z.boolean().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -50,12 +52,16 @@ export default function LoginPage() {
     defaultValues: {
       email: '',
       password: '',
+      rememberMe: false,
     },
   });
 
   const handleLogin = async (values: FormData) => {
     setIsLoading(true);
     try {
+      // In a real app, you would set persistence based on 'rememberMe'
+      // await setPersistence(auth, values.rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
@@ -84,8 +90,6 @@ export default function LoginPage() {
           router.push('/'); // Fallback
         }
       } else {
-        // This case handles users that exist in Firebase Auth but not in Firestore.
-        // It's good practice to log them out and show an error.
         await auth.signOut();
         toast({ variant: 'destructive', title: 'User data not found. Please contact support.' });
       }
@@ -99,6 +103,9 @@ export default function LoginPage() {
           break;
         case 'auth/invalid-email':
           errorMessage = 'Please enter a valid email address.';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many failed login attempts. Please try again later.';
           break;
       }
       toast({
@@ -141,18 +148,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-4 py-12 text-black">
       <div className="mx-auto w-full max-w-md">
         <div className="flex justify-center mb-6">
-          <Link href="/" className="flex items-center gap-2">
-            <Car className="h-8 w-8 text-primary" />
+          <Link href="/" className="flex items-center gap-2 text-black">
+            <Car className="h-8 w-8 text-black" />
             <span className="text-2xl font-bold font-headline">Orange Rides</span>
           </Link>
         </div>
-        <Card>
+        <Card className="bg-white border-black/20">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-headline">Welcome Back</CardTitle>
-            <CardDescription>Sign in to continue to your account</CardDescription>
+            <CardDescription className="text-black/60">Sign in to continue to your account</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -167,6 +174,7 @@ export default function LoginPage() {
                         <Input
                           type="email"
                           placeholder="you@example.com"
+                          className="bg-white border-black/20 focus:ring-black"
                           {...field}
                           disabled={isLoading}
                         />
@@ -185,6 +193,7 @@ export default function LoginPage() {
                         <Input
                           type="password"
                           placeholder="••••••••"
+                           className="bg-white border-black/20 focus:ring-black"
                           {...field}
                           disabled={isLoading}
                         />
@@ -193,20 +202,40 @@ export default function LoginPage() {
                     </FormItem>
                   )}
                 />
-                <div className="flex items-center justify-end">
-                   <Button variant="link" type="button" onClick={handlePasswordReset} className="px-0 text-sm h-auto font-normal">
+                <div className="flex items-center justify-between">
+                   <FormField
+                    control={form.control}
+                    name="rememberMe"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            className="border-black/40"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="font-normal">
+                            Remember Me
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  <Button variant="link" type="button" onClick={handlePasswordReset} className="px-0 text-sm h-auto font-normal text-black hover:underline">
                       Forgot Password?
                   </Button>
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full bg-black text-white hover:bg-black/80" disabled={isLoading}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Sign In
                 </Button>
               </form>
             </Form>
-            <div className="mt-6 text-center text-sm">
+            <div className="mt-6 text-center text-sm text-black/80">
               Don't have an account?{' '}
-              <Link href="/signup" className="font-semibold text-primary hover:underline">
+              <Link href="/signup" className="font-semibold text-black hover:underline">
                 Sign up
               </Link>
             </div>

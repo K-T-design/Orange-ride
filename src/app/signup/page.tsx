@@ -98,6 +98,11 @@ export default function SignUpPage() {
     const newRole = value as 'Customer' | 'Ride Owner';
     setRole(newRole);
     form.setValue('role', newRole);
+    // Reset specific fields when switching tabs to avoid carrying over invalid data
+    if (newRole === 'Customer') {
+      form.unregister('businessName');
+      form.unregister('businessType');
+    }
   };
 
   const onSubmit = async (values: FormData) => {
@@ -165,23 +170,23 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-4 py-12 text-black">
       <div className="mx-auto w-full max-w-md">
         <div className="flex justify-center mb-6">
-          <Link href="/" className="flex items-center gap-2">
-            <Car className="h-8 w-8 text-primary" />
+          <Link href="/" className="flex items-center gap-2 text-black">
+            <Car className="h-8 w-8 text-black" />
             <span className="text-2xl font-bold font-headline">Orange Rides</span>
           </Link>
         </div>
-        <Tabs value={role} className="w-full" onValueChange={handleTabChange}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="Customer">I'm a Customer</TabsTrigger>
-            <TabsTrigger value="Ride Owner">I'm a Ride Owner</TabsTrigger>
+        <Tabs value={role} onValueChange={handleTabChange} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 bg-gray-200">
+            <TabsTrigger value="Customer" className="data-[state=active]:bg-black data-[state=active]:text-white">I'm a Customer</TabsTrigger>
+            <TabsTrigger value="Ride Owner" className="data-[state=active]:bg-black data-[state=active]:text-white">I'm a Ride Owner</TabsTrigger>
           </TabsList>
-          <Card className="mt-4">
+          <Card className="mt-4 bg-white border-black/20">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl font-headline">Create an Account</CardTitle>
-              <CardDescription>
+              <CardDescription className="text-black/60">
                 {role === 'Customer'
                   ? 'Find and book rides with ease.'
                   : 'List your vehicle and start earning.'}
@@ -190,66 +195,65 @@ export default function SignUpPage() {
             <CardContent>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  {/* Common Fields */}
-                  <FormField
-                    control={form.control}
-                    name="fullName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{role === 'Customer' ? 'Full Name' : 'Contact Person Full Name'}</FormLabel>
-                        <FormControl>
-                          <Input placeholder="John Doe" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <FormField
+                      control={form.control}
+                      name="fullName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{role === 'Customer' ? 'Full Name' : 'Contact Person Full Name'}</FormLabel>
+                          <FormControl>
+                            <Input placeholder="John Doe" {...field} className="bg-white border-black/20 focus:ring-black" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  {role === 'Ride Owner' && (
-                    <>
-                      <FormField
-                          control={form.control}
-                          name="businessName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Business Name</FormLabel>
-                              <FormControl>
-                                <Input placeholder="e.g., City Express" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                    {role === 'Ride Owner' && (
+                      <>
                         <FormField
-                          control={form.control}
-                          name="businessType"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Business Type</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            control={form.control}
+                            name="businessName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Business Name</FormLabel>
                                 <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select your business type" />
-                                  </SelectTrigger>
+                                  <Input placeholder="e.g., City Express" {...field} className="bg-white border-black/20 focus:ring-black" />
                                 </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="Transport Company">Transport Company</SelectItem>
-                                  <SelectItem value="Individual Driver">Individual Driver</SelectItem>
-                                  <SelectItem value="Booking Company">Booking Company</SelectItem>
-                                  <SelectItem value="Vehicle Rental Service">Vehicle Rental Service</SelectItem>
-                                  <SelectItem value="Taxi Service">Taxi Service</SelectItem>
-                                  <SelectItem value="Bus Service">Bus Service</SelectItem>
-                                  <SelectItem value="Private Rides Service">Private Rides Service</SelectItem>
-                                  <SelectItem value="Shuttle Service">Shuttle Service</SelectItem>
-                                  <SelectItem value="Logistics Service">Logistics Service</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                    </>
-                  )}
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="businessType"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Business Type</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger className="bg-white border-black/20 focus:ring-black">
+                                      <SelectValue placeholder="Select your business type" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="Transport Company">Transport Company</SelectItem>
+                                    <SelectItem value="Individual Driver">Individual Driver</SelectItem>
+                                    <SelectItem value="Booking Company">Booking Company</SelectItem>
+                                    <SelectItem value="Vehicle Rental Service">Vehicle Rental Service</SelectItem>
+                                    <SelectItem value="Taxi Service">Taxi Service</SelectItem>
+                                    <SelectItem value="Bus Service">Bus Service</SelectItem>
+                                    <SelectItem value="Private Rides Service">Private Rides Service</SelectItem>
+                                    <SelectItem value="Shuttle Service">Shuttle Service</SelectItem>
+                                    <SelectItem value="Logistics Service">Logistics Service</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                      </>
+                    )}
                   
                   <FormField
                     control={form.control}
@@ -258,7 +262,7 @@ export default function SignUpPage() {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="you@example.com" {...field} />
+                          <Input type="email" placeholder="you@example.com" {...field} className="bg-white border-black/20 focus:ring-black" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -271,7 +275,7 @@ export default function SignUpPage() {
                       <FormItem>
                         <FormLabel>Phone Number</FormLabel>
                         <FormControl>
-                          <Input placeholder="2348012345678" {...field} />
+                          <Input placeholder="2348012345678" {...field} className="bg-white border-black/20 focus:ring-black" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -284,7 +288,7 @@ export default function SignUpPage() {
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
+                          <Input type="password" placeholder="••••••••" {...field} className="bg-white border-black/20 focus:ring-black" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -297,7 +301,7 @@ export default function SignUpPage() {
                       <FormItem>
                         <FormLabel>Confirm Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
+                          <Input type="password" placeholder="••••••••" {...field} className="bg-white border-black/20 focus:ring-black" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -308,18 +312,19 @@ export default function SignUpPage() {
                     control={form.control}
                     name="terms"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-black/20 p-4">
                         <FormControl>
                           <Checkbox
+                            className="border-black/40"
                             checked={field.value}
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel>
+                          <FormLabel className="font-normal">
                             Accept terms and conditions
                           </FormLabel>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-black/60">
                             You agree to our Terms of Service and Privacy Policy.
                           </p>
                            <FormMessage />
@@ -328,7 +333,7 @@ export default function SignUpPage() {
                     )}
                   />
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full bg-black text-white hover:bg-black/80" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Create Account
                   </Button>
@@ -337,9 +342,9 @@ export default function SignUpPage() {
             </CardContent>
           </Card>
         </Tabs>
-        <div className="mt-6 text-center text-sm">
+        <div className="mt-6 text-center text-sm text-black/80">
           Already have an account?{' '}
-          <Link href="/login" className="font-semibold text-primary hover:underline">
+          <Link href="/login" className="font-semibold text-black hover:underline">
             Sign in
           </Link>
         </div>
