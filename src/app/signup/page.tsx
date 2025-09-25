@@ -116,12 +116,10 @@ export default function SignUpPage() {
       };
 
       if (values.role === 'Ride Owner') {
-        userData = {
-          ...userData,
-          businessName: values.businessName,
-          businessType: values.businessType,
-        };
+        // Save to the main 'users' collection
+        await setDoc(doc(db, 'users', user.uid), { ...userData, businessName: values.businessName, businessType: values.businessType });
         
+        // Save to the 'rideOwners' collection for admin management
         await setDoc(doc(db, 'rideOwners', user.uid), {
           name: values.businessName,
           contactPerson: values.fullName,
@@ -131,6 +129,7 @@ export default function SignUpPage() {
           createdAt: serverTimestamp(),
         });
 
+        // Create a notification for the admin
         await addDoc(collection(db, 'notifications'), {
             message: `New ride owner '${values.businessName}' signed up and needs approval.`,
             ownerName: values.businessName,
@@ -138,9 +137,11 @@ export default function SignUpPage() {
             createdAt: serverTimestamp(),
             read: false
         });
-      }
 
-      await setDoc(doc(db, 'users', user.uid), userData);
+      } else {
+        // Save to the main 'users' collection for customers
+        await setDoc(doc(db, 'users', user.uid), userData);
+      }
 
       toast({
         title: 'Account Created!',
@@ -346,5 +347,3 @@ export default function SignUpPage() {
     </div>
   );
 }
-
-    

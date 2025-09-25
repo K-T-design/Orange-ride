@@ -84,8 +84,10 @@ export default function LoginPage() {
           router.push('/'); // Fallback
         }
       } else {
-        toast({ variant: 'destructive', title: 'User data not found.' });
-        router.push('/');
+        // This case handles users that exist in Firebase Auth but not in Firestore.
+        // It's good practice to log them out and show an error.
+        await auth.signOut();
+        toast({ variant: 'destructive', title: 'User data not found. Please contact support.' });
       }
     } catch (error: any) {
       let errorMessage = 'An unknown error occurred. Please check your internet connection.';
