@@ -64,7 +64,12 @@ export function Header() {
         let initials = 'U';
         let avatarUrl = undefined;
 
-        if (userDoc.exists()) {
+        // Simplified Admin check for this demo
+        const adminEmails = ['admin@example.com', 'superadmin@example.com'];
+        if (adminEmails.includes(user.email ?? '')) {
+            role = 'Admin';
+            initials = 'A';
+        } else if (userDoc.exists()) {
           const userData = userDoc.data();
           role = userData.role; // 'Customer' or 'Ride Owner'
           if (userData.fullName) {
@@ -73,12 +78,6 @@ export function Header() {
           if (userData.profilePicture) {
             avatarUrl = userData.profilePicture;
           }
-        }
-        
-        // Simplified Admin check for this demo
-        if (user.email === 'admin@example.com' || user.uid === 'XgQfA6sCVThsWw2g4iJpYc3F5yG3') {
-            role = 'Admin';
-            initials = 'A';
         }
 
         setUserState({ loggedIn: true, role, initials, avatarUrl });
@@ -108,6 +107,7 @@ export function Header() {
   const getDashboardUrl = () => {
       if (userState?.role === 'Ride Owner') return '/owner/dashboard';
       if (userState?.role === 'Customer') return '/customer/home';
+      // Admin does not have a dashboard link in this header
       return '/login';
   }
 
@@ -178,13 +178,17 @@ export function Header() {
                 <>
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href={getDashboardUrl()}><LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard</Link>
-                  </DropdownMenuItem>
-                   <DropdownMenuItem asChild>
-                    <Link href={userState.role === 'Ride Owner' ? '/owner/profile' : '/customer/profile'}><User className="mr-2 h-4 w-4" /> Profile</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  {userState.role !== 'Admin' && (
+                    <DropdownMenuItem asChild>
+                      <Link href={getDashboardUrl()}><LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard</Link>
+                    </DropdownMenuItem>
+                  )}
+                   {userState.role !== 'Admin' && (
+                    <DropdownMenuItem asChild>
+                      <Link href={userState.role === 'Ride Owner' ? '/owner/profile' : '/customer/profile'}><User className="mr-2 h-4 w-4" /> Profile</Link>
+                    </DropdownMenuItem>
+                  )}
+                  {userState.role !== 'Admin' && <DropdownMenuSeparator />}
                   <DropdownMenuItem onSelect={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout

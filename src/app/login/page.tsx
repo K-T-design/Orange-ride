@@ -121,7 +121,8 @@ function LoginForm({ onSuccessfulSignup }: { onSuccessfulSignup: () => void }) {
       const adminEmails = ['admin@example.com', 'superadmin@example.com'];
       if (adminEmails.includes(user.email ?? '')) {
          toast({ title: 'Admin Login Successful' });
-         router.push('/admin');
+         // Redirect admins to homepage as well, they can navigate to /admin manually
+         router.push('/');
          return;
       }
 
