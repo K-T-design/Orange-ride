@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -34,9 +34,11 @@ const formSchema = z.object({
   altContact: z.string().optional(),
   image: z.any()
     .refine((file) => file, 'Vehicle image is required.')
-    .refine((file) => file?.size <= MAX_FILE_SIZE, `Max image size is 5MB.`)
+    // When editing, the image field might be a string (URL) initially.
+    // So, we only validate the file object if it's not a string.
+    .refine((file) => typeof file === 'string' || file?.size <= MAX_FILE_SIZE, `Max image size is 5MB.`)
     .refine(
-      (file) => ACCEPTED_IMAGE_TYPES.includes(file?.type),
+      (file) => typeof file === 'string' || ACCEPTED_IMAGE_TYPES.includes(file?.type),
       "Only .jpg, .jpeg, and .png formats are supported."
     ),
 });
@@ -73,10 +75,21 @@ export function ListingForm({ onSubmit, isSubmitting, isDisabled, initialData, s
     },
   });
 
+   useEffect(() => {
+    if (initialData) {
+      // Create a mutable copy
+      const dataToSet: Partial<ListingFormData> = { ...initialData };
+      form.reset(dataToSet);
+      if (typeof dataToSet.image === 'string') {
+        setImagePreview(dataToSet.image);
+      }
+    }
+  }, [initialData, form]);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      form.setValue('image', file);
+      form.setValue('image', file, { shouldValidate: true });
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
@@ -86,7 +99,7 @@ export function ListingForm({ onSubmit, isSubmitting, isDisabled, initialData, s
   };
 
   const removeImage = () => {
-    form.setValue('image', null);
+    form.setValue('image', null, { shouldValidate: true });
     setImagePreview(null);
   };
 

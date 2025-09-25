@@ -8,12 +8,12 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Car, LayoutDashboard, CarIcon, User, LogOut, Loader2, CreditCard, PlusCircle } from 'lucide-react';
+import { Car, LayoutDashboard, CarIcon, User, LogOut, Loader2, CreditCard, PlusCircle, List } from 'lucide-react';
 import Link from 'next/link';
 
 const ownerNavLinks = [
   { href: '/owner/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/owner/listings', label: 'My Listings', icon: CarIcon },
+  { href: '/owner/listings', label: 'My Listings', icon: List },
   { href: '/owner/listings/add', label: 'Add New Listing', icon: PlusCircle },
   { href: '/owner/subscriptions', label: 'Subscription', icon: CreditCard },
   { href: '/owner/profile', label: 'My Profile', icon: User },
@@ -88,17 +88,20 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
             <Car className="h-7 w-7 text-primary transition-all group-hover:scale-110" />
             <span className="font-headline">Orange Rides</span>
           </Link>
-          {ownerNavLinks.map((link) => (
-            <Link key={link.label} href={link.href}>
-              <Button
-                variant={pathname === link.href ? 'secondary' : 'ghost'}
-                className="w-full justify-start"
-              >
-                <link.icon className="mr-2 h-4 w-4" />
-                {link.label}
-              </Button>
-            </Link>
-          ))}
+          {ownerNavLinks.map((link) => {
+            const isActive = pathname.startsWith(link.href) && (link.href !== '/owner/listings' || pathname === '/owner/listings');
+            return (
+              <Link key={link.label} href={link.href}>
+                <Button
+                  variant={isActive ? 'secondary' : 'ghost'}
+                  className="w-full justify-start"
+                >
+                  <link.icon className="mr-2 h-4 w-4" />
+                  {link.label}
+                </Button>
+              </Link>
+            )
+          })}
         </nav>
         <nav className="mt-auto flex flex-col gap-4 p-4">
             <Button variant="outline" onClick={handleLogout}>
