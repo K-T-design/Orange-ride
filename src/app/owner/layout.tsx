@@ -1,4 +1,3 @@
-
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
@@ -8,7 +7,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Car, LayoutDashboard, CarIcon, User, LogOut, Loader2, CreditCard, PlusCircle, List } from 'lucide-react';
+import { Car, LayoutDashboard, User, LogOut, Loader2, CreditCard, PlusCircle, List } from 'lucide-react';
 import Link from 'next/link';
 
 const ownerNavLinks = [
