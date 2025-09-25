@@ -4,6 +4,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Eye, Rocket, Search, ShieldCheck } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
+async function getAboutContent() {
+    try {
+        const aboutUsRef = doc(db, 'siteContent', 'aboutUs');
+        const docSnap = await getDoc(aboutUsRef);
+
+        if (docSnap.exists() && docSnap.data().publishedVersion) {
+            return docSnap.data().publishedVersion;
+        }
+    } catch (error) {
+        console.error("Error fetching 'About Us' content:", error);
+    }
+
+    // Return default content if fetch fails or no data exists
+    return {
+        mission: "To seamlessly connect people with safe, reliable, and affordable transportation across Nigeria, fostering community and economic empowerment through technology.",
+        vision: "To be Nigeria's most trusted and preferred digital transportation marketplace, transforming the way people travel by making it simpler, safer, and more efficient for everyone.",
+        values: ["Customer-Centric", "Safety First", "Integrity", "Innovation", "Community"],
+        howItWorks: [
+            { icon: Search, title: "Search for a Ride", description: "Enter your pickup and destination to browse available vehicles." },
+            { icon: CheckCircle, title: "Choose the Best Fit", description: "Compare prices and schedules to find the perfect ride for you." },
+            { icon: Rocket, title: "Enjoy Your Trip", description: "Connect with the owner and embark on a smooth journey." },
+        ],
+        whyChooseUs: ["Wide Range of Options", "Transparent Pricing", "Direct Contact with Owners", "Safety and Reliability"],
+    };
+}
+
 
 const StepCard = ({ icon, title, description, step }: { icon: React.ReactNode, title: string, description: string, step: number }) => (
     <div className="relative">
@@ -19,18 +48,10 @@ const StepCard = ({ icon, title, description, step }: { icon: React.ReactNode, t
 )
 
 
-export default function AboutUsPage() {
+export default async function AboutUsPage() {
     
-    // Placeholder data - will be replaced with Firestore data
-    const mission = "To seamlessly connect people with safe, reliable, and affordable transportation across Nigeria, fostering community and economic empowerment through technology.";
-    const vision = "To be Nigeria's most trusted and preferred digital transportation marketplace, transforming the way people travel by making it simpler, safer, and more efficient for everyone.";
-    const values = ["Customer-Centric", "Safety First", "Integrity", "Innovation", "Community"];
-    const howItWorks = [
-        { icon: <Search className="h-8 w-8" />, title: "Search for a Ride", description: "Enter your pickup and destination to browse available vehicles." },
-        { icon: <CheckCircle className="h-8 w-8" />, title: "Choose the Best Fit", description: "Compare prices and schedules to find the perfect ride for you." },
-        { icon: <Rocket className="h-8 w-8" />, title: "Enjoy Your Trip", description: "Connect with the owner and embark on a smooth journey." },
-    ];
-    const whyChooseUs = ["Wide Range of Options", "Transparent Pricing", "Direct Contact with Owners", "Safety and Reliability"];
+    const content = await getAboutContent();
+    const howItWorksIcons = [Search, CheckCircle, Rocket];
 
     return (
         <div className="flex flex-col gap-16">
@@ -45,18 +66,18 @@ export default function AboutUsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                     <div className="prose max-w-none">
                         <h2 className="text-3xl font-bold font-headline"><Rocket className="inline-block h-8 w-8 mr-2 text-primary" /> Our Mission</h2>
-                        <p className="text-lg">{mission}</p>
+                        <p className="text-lg">{content.mission}</p>
                     </div>
                     <div className="prose max-w-none">
                          <h2 className="text-3xl font-bold font-headline"><Eye className="inline-block h-8 w-8 mr-2 text-primary" /> Our Vision</h2>
-                         <p className="text-lg">{vision}</p>
+                         <p className="text-lg">{content.vision}</p>
                     </div>
                 </div>
 
                 <div>
                     <h2 className="text-3xl font-bold font-headline text-center mb-8">Our Core Values</h2>
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-                        {values.map(value => (
+                        {content.values.map((value: string) => (
                              <Card key={value} className="p-6 text-center">
                                 <p className="font-semibold">{value}</p>
                              </Card>
@@ -67,9 +88,10 @@ export default function AboutUsPage() {
                 <div>
                     <h2 className="text-3xl font-bold font-headline text-center mb-8">How It Works</h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                       {howItWorks.map((step, index) => (
-                          <StepCard key={step.title} {...step} step={index + 1} />
-                       ))}
+                       {content.howItWorks.map((step: string, index: number) => {
+                           const Icon = howItWorksIcons[index] || Search;
+                           return <StepCard key={index} icon={<Icon className="h-8 w-8" />} title={`Step ${index + 1}`} description={step} step={index + 1} />
+                       })}
                     </div>
                 </div>
 
@@ -80,7 +102,7 @@ export default function AboutUsPage() {
                     <div>
                         <h2 className="text-3xl font-bold font-headline mb-4">Why Choose Us?</h2>
                         <ul className="space-y-4">
-                            {whyChooseUs.map(reason => (
+                            {content.whyChooseUs.map((reason: string) => (
                                 <li key={reason} className="flex items-start gap-3">
                                     <ShieldCheck className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
                                     <div>
