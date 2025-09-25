@@ -10,7 +10,7 @@ import { RideCard } from '@/components/ride-card';
 import type { Ride } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { History, Star, User, Bell, Loader2, Frown } from 'lucide-react';
+import { History, Star, User, Bell, Loader2, Frown, Search } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -213,11 +213,17 @@ export default function CustomerDashboardPage() {
                     ))}
                 </div>
             ) : (
-                <Card className="text-center py-16 text-muted-foreground">
+                <Card className="text-center py-16 text-muted-foreground animate-fade-in-up">
                     <CardContent>
                         <Frown className="mx-auto h-12 w-12" />
-                        <h3 className="mt-4 text-lg font-semibold">No saved rides yet</h3>
-                        <p className="mt-1 text-sm">Click the star on any ride to save it for later.</p>
+                        <h3 className="mt-4 text-lg font-semibold">You haven’t saved any rides yet.</h3>
+                        <p className="mt-2 text-sm">Click the star on any ride to save it for later.</p>
+                        <Button asChild className="mt-6">
+                            <Link href="/search">
+                                <Search className="mr-2 h-4 w-4" />
+                                Find a Ride
+                            </Link>
+                        </Button>
                     </CardContent>
                 </Card>
             )}
