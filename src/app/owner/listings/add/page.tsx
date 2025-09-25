@@ -206,7 +206,7 @@ export default function AddListingPage() {
           <AlertTitle>Cannot Add Listing</AlertTitle>
           <AlertDescription>
             {ownerInfo?.status !== 'Active' ? `Your account is currently ${ownerInfo?.status}. You must be active to add a listing.` :
-              (ownerInfo?.plan === 'None' ? "You do not have an active subscription." : "You have reached the listing limit for your current plan.")}
+              (!ownerInfo?.plan || ownerInfo.plan === 'None' ? "You do not have an active subscription." : "You have reached the listing limit for your current plan.")}
             &nbsp;Please <Button variant="link" asChild className="p-0 h-auto"><Link href="/owner/subscriptions">upgrade your plan</Link></Button> or contact support.
           </AlertDescription>
         </Alert>
