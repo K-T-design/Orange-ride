@@ -1,6 +1,7 @@
 
 import { FaqAccordion } from "@/components/faq-accordion";
 import { HowItWorks } from "@/components/how-it-works";
+import { ContactForm } from "@/components/contact-form";
 import { Separator } from "@/components/ui/separator";
 
 export default function HelpPage() {
@@ -18,6 +19,10 @@ export default function HelpPage() {
       <Separator className="my-16" />
 
       <FaqAccordion />
+
+      <Separator className="my-16" />
+
+      <ContactForm />
 
     </div>
   );
