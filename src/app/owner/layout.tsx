@@ -7,12 +7,13 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Car, LayoutDashboard, CarIcon, User, LogOut, Loader2 } from 'lucide-react';
+import { Car, LayoutDashboard, CarIcon, User, LogOut, Loader2, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 
 const ownerNavLinks = [
   { href: '/owner/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/owner/listings', label: 'My Listings', icon: CarIcon },
+  { href: '/owner/subscriptions', label: 'Subscription', icon: CreditCard },
   { href: '/owner/profile', label: 'My Profile', icon: User },
 ];
 
