@@ -23,21 +23,18 @@ async function getFeaturedRides(): Promise<Ride[]> {
     // If there are fewer than 4 promoted rides, get the most recent approved rides to fill the gap
     if (rides.length < 4) {
       const needed = 4 - rides.length;
-      // Query by ordering by creation date, then filter for status in code.
-      // This avoids needing a composite index on `status` and `createdAt`.
       const recentQuery = query(
         collection(db, 'listings'),
+        where('status', '==', 'Approved'),
         orderBy('createdAt', 'desc'),
-        limit(10) // Fetch a bit more to have enough to filter from
+        limit(needed)
       );
       const recentSnapshot = await getDocs(recentQuery);
       
-      const allRecentRides = recentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
-      const recentApprovedRides = allRecentRides.filter(ride => ride.status === 'Approved');
-      
       // Add recent rides only if they aren't already in the list (as a promoted ride)
       const existingIds = new Set(rides.map(r => r.id));
-      const filteredRecentRides = recentApprovedRides.filter(r => !existingIds.has(r.id)).slice(0, needed);
+      const recentRides = recentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
+      const filteredRecentRides = recentRides.filter(r => !existingIds.has(r.id));
       
       rides = [...rides, ...filteredRecentRides];
     }
