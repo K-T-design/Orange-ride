@@ -10,6 +10,7 @@ import { auth } from "@/lib/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationsDropdown } from "@/components/admin/notifications-dropdown";
+import Link from "next/link";
 
 const adminNavLinks = [
   { href: "/admin", label: "Dashboard", icon: Home },
@@ -106,10 +107,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <SidebarProvider>
         <Sidebar>
             <SidebarHeader>
-                <div className="flex items-center gap-2 p-2">
+                 <Link href="/" className="flex items-center gap-2 p-2" prefetch={false}>
                     <Car className="h-8 w-8 text-primary" />
                     <span className="text-xl font-bold font-headline">Orange Rides</span>
-                </div>
+                </Link>
             </SidebarHeader>
             <SidebarContent>
                 <SidebarMenu>
