@@ -1,8 +1,7 @@
-
 'use client';
 
 import Link from 'next/link';
-import { Car, LogIn } from 'lucide-react';
+import { Car } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 const Logo = () => (
@@ -16,7 +15,8 @@ export function Footer() {
   const pathname = usePathname();
 
   // Don't render footer for admin or auth pages
-  if (pathname.startsWith('/admin') || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/customer')) {
+  const authPages = ['/admin', '/login', '/signup', '/customer', '/owner'];
+  if (authPages.some(p => pathname.startsWith(p))) {
     return null;
   }
 
