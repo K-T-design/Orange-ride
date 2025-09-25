@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -39,12 +40,12 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-primary transition-colors" prefetch={false}>
+                <Link href="/login" className="text-muted-foreground hover:text-primary transition-colors" prefetch={false}>
                   List a Ride
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-primary transition-colors" prefetch={false}>
+                <Link href="/help" className="text-muted-foreground hover:text-primary transition-colors" prefetch={false}>
                   Help Center
                 </Link>
               </li>
@@ -63,9 +64,14 @@ export function Footer() {
                   Contact
                 </Link>
               </li>
-              <li>
-                <Link href="#" className="text-muted-foreground hover:text-primary transition-colors" prefetch={false}>
+               <li>
+                <Link href="/privacy-policy" className="text-muted-foreground hover:text-primary transition-colors" prefetch={false}>
                   Privacy Policy
+                </Link>
+              </li>
+               <li>
+                <Link href="/terms-of-service" className="text-muted-foreground hover:text-primary transition-colors" prefetch={false}>
+                  Terms & Conditions
                 </Link>
               </li>
             </ul>
