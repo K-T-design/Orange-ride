@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   projectId: "studio-8215111751-90b20",
@@ -9,6 +10,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyB-aophYYXDndp469nBh29Q0X3ukRfg2KQ",
   authDomain: "studio-8215111751-90b20.firebaseapp.com",
   messagingSenderId: "1006604457879",
+  storageBucket: "studio-8215111751-90b20.appspot.com",
 };
 
 // Initialize Firebase
@@ -21,5 +23,6 @@ if (!getApps().length) {
 
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
-export { auth, db };
+export { auth, db, storage };

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
@@ -90,7 +91,7 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
           {ownerNavLinks.map((link) => (
             <Link key={link.label} href={link.href}>
               <Button
-                variant={pathname.startsWith(link.href) && link.href !== '/owner/dashboard' ? 'secondary' : (pathname === link.href ? 'secondary' : 'ghost')}
+                variant={pathname === link.href ? 'secondary' : 'ghost'}
                 className="w-full justify-start"
               >
                 <link.icon className="mr-2 h-4 w-4" />

@@ -1,10 +1,12 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, storage } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { ListingForm } from '@/components/owner/listing-form';
 import type { ListingFormData } from '@/components/owner/listing-form';
@@ -16,10 +18,10 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 
 type OwnerInfo = {
-    businessName: string;
-    businessType: string;
-    plan: keyof typeof planLimits;
-    status: string;
+  businessName: string;
+  businessType: string;
+  plan: keyof typeof planLimits;
+  status: string;
 };
 
 export default function AddListingPage() {
@@ -49,7 +51,7 @@ export default function AddListingPage() {
               status: data.status,
             });
           } else {
-             setOwnerInfo({ businessName: 'Unknown', businessType: 'N/A', plan: 'None', status: 'Inactive' });
+            setOwnerInfo({ businessName: 'Unknown', businessType: 'N/A', plan: 'None', status: 'Inactive' });
           }
 
           // Fetch current listing count
@@ -66,41 +68,50 @@ export default function AddListingPage() {
       };
       fetchOwnerData();
     } else if (!loadingAuth) {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   }, [user, loadingAuth, toast]);
 
+  const uploadImage = async (imageFile: File, userId: string): Promise<string> => {
+    const fileRef = ref(storage, `listings/${userId}/${Date.now()}-${imageFile.name}`);
+    await uploadBytes(fileRef, imageFile);
+    const downloadURL = await getDownloadURL(fileRef);
+    return downloadURL;
+  };
 
   async function handleAddListing(values: ListingFormData) {
     if (!user || !ownerInfo || !canCreateListing()) {
-        toast({
-            variant: 'destructive',
-            title: 'Action Prohibited',
-            description: 'You cannot add a new listing at this time. Please check your subscription status.'
-        });
-        return;
+      toast({
+        variant: 'destructive',
+        title: 'Action Prohibited',
+        description: 'You cannot add a new listing at this time. Please check your subscription status.'
+      });
+      return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       // Re-check limit just before submission
       const limit = ownerInfo.plan ? planLimits[ownerInfo.plan] : 0;
       if (limit !== Infinity && listingCount >= limit) {
-         toast({
-            variant: 'destructive',
-            title: 'Listing Limit Reached',
-            description: `You have reached the maximum of ${limit} listings for your ${ownerInfo.plan} plan.`,
+        toast({
+          variant: 'destructive',
+          title: 'Listing Limit Reached',
+          description: `You have reached the maximum of ${limit} listings for your ${ownerInfo.plan} plan.`,
         });
         setIsSubmitting(false);
         return;
       }
-      
-      // Check for 80% warning
+
+      // 1. Upload image to Firebase Storage
+      const imageUrl = await uploadImage(values.image, user.uid);
+
+      // 2. Check for 80% warning
       if (limit !== Infinity) {
         const usagePercentage = (listingCount + 1) / limit;
         if (usagePercentage >= 0.8) {
-            await addDoc(collection(db, 'notifications'), {
+          await addDoc(collection(db, 'notifications'), {
             message: `${ownerInfo.businessName} is at ${Math.round(usagePercentage * 100)}% of their listing limit.`,
             ownerName: ownerInfo.businessName,
             plan: ownerInfo.plan,
@@ -110,7 +121,8 @@ export default function AddListingPage() {
           });
         }
       }
-
+      
+      // 3. Save listing to Firestore
       await addDoc(collection(db, 'listings'), {
         name: values.name,
         type: values.type,
@@ -121,8 +133,8 @@ export default function AddListingPage() {
         pickup: values.location,
         schedule: values.schedule,
         contact: {
-            phone: values.phone,
-            whatsapp: values.whatsapp,
+          phone: values.phone,
+          whatsapp: values.whatsapp,
         },
         altContact: values.altContact,
         description: values.description,
@@ -132,7 +144,7 @@ export default function AddListingPage() {
         status: 'Pending',
         postedBy: 'owner',
         isPromoted: false,
-        image: 'sedan-1', // Placeholder, image upload logic would go here
+        image: imageUrl,
         createdAt: serverTimestamp(),
       });
 
@@ -155,14 +167,14 @@ export default function AddListingPage() {
   }
 
   const canCreateListing = () => {
-      if (isLoading || !ownerInfo) return false;
-      if (ownerInfo.status !== 'Active') return false;
-      if (!ownerInfo.plan || ownerInfo.plan === 'None') return false;
-      const limit = planLimits[ownerInfo.plan];
-      if (limit === Infinity) return true;
-      return listingCount < limit;
+    if (isLoading || !ownerInfo) return false;
+    if (ownerInfo.status !== 'Active') return false;
+    if (!ownerInfo.plan || ownerInfo.plan === 'None') return false;
+    const limit = planLimits[ownerInfo.plan];
+    if (limit === Infinity) return true;
+    return listingCount < limit;
   };
-  
+
   if (isLoading || loadingAuth) {
     return (
       <div className="space-y-6">
@@ -183,29 +195,29 @@ export default function AddListingPage() {
 
   return (
     <div className="flex flex-col gap-8">
-        <div>
-            <h1 className="text-3xl font-bold font-headline">Add New Vehicle Listing</h1>
-            <p className="text-muted-foreground">Fill out the details below to add a new ride to your fleet.</p>
-        </div>
-        
-        {!canCreateListing() && (
-             <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Cannot Add Listing</AlertTitle>
-                <AlertDescription>
-                    {ownerInfo?.status !== 'Active' ? `Your account is currently ${ownerInfo?.status}. You must be active to add a listing.` :
-                    (ownerInfo?.plan === 'None' ? "You do not have an active subscription." : "You have reached the listing limit for your current plan.")}
-                    &nbsp;Please <Button variant="link" asChild className="p-0 h-auto"><Link href="/owner/subscriptions">upgrade your plan</Link></Button> or contact support.
-                </AlertDescription>
-            </Alert>
-        )}
+      <div>
+        <h1 className="text-3xl font-bold font-headline">Add New Vehicle Listing</h1>
+        <p className="text-muted-foreground">Fill out the details below to add a new ride to your fleet.</p>
+      </div>
 
-        <ListingForm
-            onSubmit={handleAddListing}
-            isSubmitting={isSubmitting}
-            isDisabled={!canCreateListing()}
-            submitButtonText="Submit for Review"
-        />
+      {!canCreateListing() && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Cannot Add Listing</AlertTitle>
+          <AlertDescription>
+            {ownerInfo?.status !== 'Active' ? `Your account is currently ${ownerInfo?.status}. You must be active to add a listing.` :
+              (ownerInfo?.plan === 'None' ? "You do not have an active subscription." : "You have reached the listing limit for your current plan.")}
+            &nbsp;Please <Button variant="link" asChild className="p-0 h-auto"><Link href="/owner/subscriptions">upgrade your plan</Link></Button> or contact support.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <ListingForm
+        onSubmit={handleAddListing}
+        isSubmitting={isSubmitting}
+        isDisabled={!canCreateListing()}
+        submitButtonText="Submit for Review"
+      />
     </div>
   );
 }
