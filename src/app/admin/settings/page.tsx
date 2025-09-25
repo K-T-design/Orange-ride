@@ -16,6 +16,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Separator } from "@/components/ui/separator";
 
 type Category = {
   id: string;
@@ -216,7 +219,7 @@ export default function SettingsPage() {
         setIsSavingDraft(true);
         try {
             const draftRef = doc(db, 'siteContent', 'privacyPolicy', 'drafts', 'latest');
-            await setDoc(draftRef, { content: draftPolicy });
+            await setDoc(draftRef, { content: draftPolicy, updatedAt: new Date() });
             setHasDraft(true);
             toast({ title: 'Draft Saved', description: 'Your changes have been saved as a draft.' });
         } catch (error) {
@@ -231,7 +234,7 @@ export default function SettingsPage() {
         setIsPublishing(true);
         try {
             const publishedRef = doc(db, 'siteContent', 'privacyPolicy');
-            await setDoc(publishedRef, { content: draftPolicy });
+            await setDoc(publishedRef, { content: draftPolicy, publishedAt: new Date() });
             setPublishedPolicy(draftPolicy); // Update state to match
             await handleDiscardDraft(false); // Clear the draft after publishing
             toast({ title: 'Privacy Policy Published', description: 'The changes are now live on your site.' });
@@ -400,24 +403,54 @@ export default function SettingsPage() {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <CardTitle>Privacy Policy Editor</CardTitle>
-                                    <CardDescription>Edit the content of your site's privacy policy. Changes must be published to go live.</CardDescription>
+                                    <CardDescription>Edit the content using Markdown. Changes must be published to go live.</CardDescription>
                                     {hasDraft && <p className="text-sm text-yellow-600 mt-2">You have unpublished draft changes.</p>}
                                 </div>
                                  <div className="flex gap-2">
                                     {hasDraft && 
-                                        <Button onClick={() => handleDiscardDraft()} variant="outline" disabled={isSavingDraft || isPublishing}>
-                                            <RotateCcw className="mr-2 h-4 w-4" />
-                                            Discard Draft
-                                        </Button>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="outline" disabled={isSavingDraft || isPublishing}>
+                                                    <RotateCcw className="mr-2 h-4 w-4" />
+                                                    Discard Draft
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Discard all draft changes?</AlertDialogTitle>
+                                                    <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDiscardDraft()}>Discard</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
                                     }
                                     <Button onClick={handleSaveDraft} variant="secondary" disabled={isSavingDraft || isPublishing}>
                                         {isSavingDraft ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                         {isSavingDraft ? 'Saving...' : 'Save Draft'}
                                     </Button>
-                                    <Button onClick={handlePublish} disabled={isPublishing || isSavingDraft}>
-                                        {isPublishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
-                                        {isPublishing ? 'Publishing...' : 'Publish'}
-                                    </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button disabled={isPublishing || isSavingDraft || !hasDraft}>
+                                                {isPublishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+                                                {isPublishing ? 'Publishing...' : 'Publish'}
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Publish changes to the live site?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This will make the current draft visible to all users. This action cannot be undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={handlePublish}>Publish Changes</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
                                  </div>
                             </div>
                         </CardHeader>
@@ -425,13 +458,27 @@ export default function SettingsPage() {
                            {isLoadingPolicy ? (
                                 <Skeleton className="w-full h-96" />
                            ) : (
-                                <Textarea
-                                    value={draftPolicy}
-                                    onChange={(e) => setDraftPolicy(e.target.value)}
-                                    rows={25}
-                                    placeholder="Enter your privacy policy content here..."
-                                    className="font-mono text-sm"
-                                />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <Label htmlFor="policy-editor" className="text-sm font-medium">Editor (Markdown)</Label>
+                                        <Textarea
+                                            id="policy-editor"
+                                            value={draftPolicy}
+                                            onChange={(e) => setDraftPolicy(e.target.value)}
+                                            rows={25}
+                                            placeholder="Enter your privacy policy content here..."
+                                            className="font-mono text-sm mt-2"
+                                        />
+                                    </div>
+                                    <div className="border rounded-md">
+                                         <Label className="text-sm font-medium px-4 pt-3 block">Live Preview</Label>
+                                        <div className="p-4 prose prose-sm prose-p:text-foreground prose-h1:text-foreground prose-h2:text-foreground prose-h3:text-foreground prose-h4:text-foreground prose-a:text-primary max-w-none">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {draftPolicy}
+                                            </ReactMarkdown>
+                                        </div>
+                                    </div>
+                                </div>
                            )}
                         </CardContent>
                     </Card>
