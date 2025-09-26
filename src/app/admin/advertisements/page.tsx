@@ -6,7 +6,7 @@ import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimest
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Trash2, Megaphone, Loader2, Edit } from "lucide-react";
+import { PlusCircle, Trash2, Megaphone, Loader2, Edit, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -19,6 +19,8 @@ import { MoreHorizontal } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
+import { getPublicIdFromUrl } from "@/lib/utils";
 
 type Ad = {
   id: string;
@@ -36,8 +38,10 @@ export default function ManageAdsPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [currentAd, setCurrentAd] = useState<Ad | null>(null);
     
+    // Form state
     const [description, setDescription] = useState('');
-    const [imageUrl, setImageUrl] = useState('');
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [link, setLink] = useState('');
     const [priority, setPriority] = useState(0);
 
@@ -55,9 +59,10 @@ export default function ManageAdsPage() {
     useEffect(() => {
         if (currentAd) {
             setDescription(currentAd.description);
-            setImageUrl(currentAd.imageUrl);
             setLink(currentAd.link || '');
             setPriority(currentAd.priority || 0);
+            setImagePreview(currentAd.imageUrl);
+            setImageFile(null); // Clear file input when editing
         } else {
             clearForm();
         }
@@ -66,11 +71,31 @@ export default function ManageAdsPage() {
 
     const clearForm = () => {
         setDescription('');
-        setImageUrl('');
         setLink('');
         setPriority(0);
+        setImageFile(null);
+        setImagePreview(null);
         setCurrentAd(null);
     }
+    
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) { // 5MB validation
+                toast({ variant: "destructive", title: "Image too large", description: "Please upload an image smaller than 5MB."});
+                return;
+            }
+            setImageFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => setImagePreview(reader.result as string);
+            reader.readAsDataURL(file);
+        }
+    };
+    
+    const removeImage = () => {
+        setImageFile(null);
+        setImagePreview(null);
+    };
 
     const openDialog = (ad: Ad | null) => {
         setCurrentAd(ad);
@@ -79,22 +104,53 @@ export default function ManageAdsPage() {
 
     const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        try {
-            // Basic URL validation
-            new URL(imageUrl);
-        } catch (_) {
-            toast({ variant: "destructive", title: "Invalid Image URL", description: "Please enter a valid URL." });
-            return;
-        }
+        
         if (!description) {
             toast({ variant: "destructive", title: "Description is required." });
             return;
         }
+        
+        // Image is required for new ads, but not when editing an existing one
+        if (!currentAd && !imageFile) {
+             toast({ variant: "destructive", title: "Image is required." });
+             return;
+        }
 
         setIsSubmitting(true);
         try {
+            let finalImageUrl = currentAd?.imageUrl;
+
+            // If a new image is selected, upload it
+            if (imageFile) {
+                 const arrayBuffer = await imageFile.arrayBuffer();
+                 const buffer = Buffer.from(arrayBuffer);
+                 const base64String = buffer.toString('base64');
+                 
+                 const uploadResult = await uploadToCloudinary(base64String, {
+                    public_id: `advertisements/${Date.now()}_${imageFile.name}`,
+                    resource_type: 'image'
+                 });
+                 finalImageUrl = uploadResult.secure_url;
+
+                 // If we are editing and there was an old image, delete it
+                 if (currentAd && currentAd.imageUrl) {
+                    const oldPublicId = getPublicIdFromUrl(currentAd.imageUrl);
+                    if (oldPublicId) {
+                        try {
+                           await deleteFromCloudinary(oldPublicId);
+                        } catch (e) {
+                            console.warn("Old image could not be deleted:", e);
+                        }
+                    }
+                 }
+            }
+            
+            if (!finalImageUrl) {
+                throw new Error("Image URL is missing.");
+            }
+
             const adData = {
-                imageUrl,
+                imageUrl: finalImageUrl,
                 description,
                 link: link || null,
                 priority: priority || 0,
@@ -133,9 +189,17 @@ export default function ManageAdsPage() {
         }
     };
 
-    const handleDeleteAd = async (adId: string) => {
-        const adRef = doc(db, 'advertisements', adId);
+    const handleDeleteAd = async (ad: Ad) => {
+        const adRef = doc(db, 'advertisements', ad.id);
         try {
+            // Delete image from Cloudinary first
+            if (ad.imageUrl) {
+                const publicId = getPublicIdFromUrl(ad.imageUrl);
+                if (publicId) {
+                    await deleteFromCloudinary(publicId);
+                }
+            }
+            // Then delete Firestore document
             await deleteDoc(adRef);
             toast({ title: "Advertisement Deleted" });
         } catch (error) {
@@ -234,7 +298,7 @@ export default function ManageAdsPage() {
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
                                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteAd(ad.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                                        <AlertDialogAction onClick={() => handleDeleteAd(ad)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
                                                     </AlertDialogFooter>
                                                 </AlertDialogContent>
                                             </AlertDialog>
@@ -257,9 +321,26 @@ export default function ManageAdsPage() {
                     </DialogHeader>
                     <form onSubmit={handleFormSubmit} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="imageUrl">Image URL</Label>
-                            <Input id="imageUrl" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://picsum.photos/seed/ad1/600/400" required />
-                            <p className="text-xs text-muted-foreground">For this demo, please use a valid image URL.</p>
+                            <Label>Image</Label>
+                            <div className="flex flex-col items-center justify-center w-full">
+                                <label htmlFor="image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted">
+                                    {imagePreview ? (
+                                        <div className="relative w-full h-full">
+                                            <Image src={imagePreview} alt="Preview" fill className="object-contain rounded-lg" />
+                                            <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={(e) => {e.preventDefault(); removeImage(); }}>
+                                                <X className="h-4 w-4"/>
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                            <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
+                                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span></p>
+                                            <p className="text-xs text-muted-foreground">PNG, JPG, or JPEG (MAX 5MB)</p>
+                                        </div>
+                                    )}
+                                </label>
+                                <Input id="image-upload" type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="description">Description</Label>
@@ -287,3 +368,5 @@ export default function ManageAdsPage() {
         </div>
     );
 }
+
+  

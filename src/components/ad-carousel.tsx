@@ -20,7 +20,9 @@ async function getActiveAds() {
     try {
         const q = query(
             collection(db, 'advertisements'), 
-            where('isActive', '==', true)
+            where('isActive', '==', true),
+            orderBy('priority', 'desc'),
+            orderBy('createdAt', 'desc')
         );
         const snapshot = await getDocs(q);
         
@@ -34,17 +36,7 @@ async function getActiveAds() {
             }
         });
         
-        // Sort on the server side
-        const sortedAds = adsData.sort((a, b) => {
-            const priorityA = a.priority || 0;
-            const priorityB = b.priority || 0;
-            if (priorityA !== priorityB) {
-                return priorityB - priorityA;
-            }
-            // Sort by date string
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        });
-        return sortedAds;
+        return adsData;
     } catch (error) {
         console.error("Error fetching ads: ", error);
         return [];
@@ -60,3 +52,5 @@ export async function AdCarousel() {
 
     return <AdCarouselClient ads={ads} />;
 }
+
+  
