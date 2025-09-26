@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { plans as planDetailsMap } from "@/lib/data";
 
 type Owner = {
   id: string;
@@ -30,18 +31,12 @@ type Subscription = {
   id: string;
   ownerId: string;
   ownerName: string;
-  plan: 'Weekly' | 'Monthly' | 'Yearly';
+  plan: 'Weekly' | 'Monthly' | 'Yearly' | 'None';
   startDate: Timestamp;
   expiryDate: Timestamp;
   status: 'Active' | 'Expired' | 'Suspended';
   listingsUsed: number;
   listingsLimit: number | 'Unlimited';
-};
-
-const planLimits = {
-  'Weekly': 9,
-  'Monthly': 50,
-  'Yearly': 'Unlimited'
 };
 
 const getStatusVariant = (status: string) => {
@@ -196,13 +191,20 @@ export default function ManageSubscriptionsPage() {
         };
 
         try {
-            if (currentSub && currentSub.id) { // Editing
-                await updateDoc(doc(db, 'subscriptions', currentSub.id), subData);
+            const subsQuery = query(collection(db, 'subscriptions'), where('ownerId', '==', ownerId));
+            const existingSubSnapshot = await getDocs(subsQuery);
+
+            if (!existingSubSnapshot.empty) { // Existing subscription found, update it
+                const existingSubDoc = existingSubSnapshot.docs[0];
+                await updateDoc(doc(db, 'subscriptions', existingSubDoc.id), subData);
                 toast({ title: "Subscription Updated" });
-            } else { // Adding
+            } else { // No subscription found, add a new one
                 await addDoc(collection(db, 'subscriptions'), subData);
                 toast({ title: "Subscription Assigned" });
             }
+            // Also update the plan on the rideOwners document for quick access
+             await updateDoc(doc(db, 'rideOwners', ownerId), { plan: plan, status: 'Active' });
+
             setIsDialogOpen(false);
             setCurrentSub(null);
         } catch (error) {
@@ -216,7 +218,7 @@ export default function ManageSubscriptionsPage() {
         return sub.status === filter;
     }).map(sub => {
         const listingsUsed = listings.filter(l => l.ownerId === sub.ownerId).length;
-        const listingsLimit = planLimits[sub.plan];
+        const listingsLimit = planDetailsMap[sub.plan]?.listings ?? 0;
         return { ...sub, listingsUsed, listingsLimit };
     });
 
@@ -357,5 +359,7 @@ export default function ManageSubscriptionsPage() {
         </div>
     );
 }
+
+    
 
     

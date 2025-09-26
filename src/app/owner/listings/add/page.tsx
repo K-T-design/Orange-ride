@@ -87,7 +87,12 @@ export default function AddListingPage() {
   };
 
   async function handleAddListing(values: ListingFormData) {
-    if (!user || !ownerInfo || !canCreateListing()) {
+    if (!user || !ownerInfo) {
+      toast({ variant: 'destructive', title: 'Authentication error.' });
+      return;
+    }
+    
+    if (!canCreateListing()) {
       toast({
         variant: 'destructive',
         title: 'Action Prohibited',
@@ -228,3 +233,5 @@ export default function AddListingPage() {
     </div>
   );
 }
+
+    
