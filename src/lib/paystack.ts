@@ -45,8 +45,8 @@ export async function initializePayment(plan: PlanKey, userId: string): Promise<
             },
             body: JSON.stringify({
                 email: userEmail,
-                amount: planDetails.price * 100, // Amount in kobo
-                plan: planDetails.code, // Correct parameter is 'plan'
+                amount: planDetails.price * 100, // Amount in kobo is required
+                plan: planDetails.code, // The plan code
                 metadata: {
                     user_id: userId,
                     plan: plan,
