@@ -6,12 +6,13 @@ import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, serverTimestamp, DocumentData } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, DocumentData, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { ListingForm } from '@/components/admin/listing-form';
 import type { ListingFormData } from '@/components/admin/listing-form';
 import { Skeleton } from '@/components/ui/skeleton';
+import { planLimits } from '@/lib/data';
 
 export default function EditListingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,6 +70,47 @@ export default function EditListingPage() {
   async function handleUpdateListing(values: ListingFormData) {
     setIsSubmitting(true);
     try {
+      // If owner is changed, check their subscription limit
+      if (values.ownerId && values.ownerId !== initialData?.ownerId) {
+        const ownerId = values.ownerId;
+        const ownerRef = doc(db, 'rideOwners', ownerId);
+        const ownerSnap = await getDoc(ownerRef);
+        const ownerName = ownerSnap.exists() ? ownerSnap.data().name : 'Unknown Owner';
+
+        const subQuery = query(collection(db, 'subscriptions'), where('ownerId', '==', ownerId));
+        const subSnapshot = await getDocs(subQuery);
+
+        if (subSnapshot.empty || subSnapshot.docs[0].data().status !== 'Active') {
+          toast({
+            variant: 'destructive',
+            title: 'Action Blocked',
+            description: `${ownerName} does not have an active subscription.`,
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
+        const subscription = subSnapshot.docs[0].data();
+        const plan = subscription.plan as keyof typeof planLimits;
+        const limit = planLimits[plan];
+
+        if (limit !== Infinity) {
+          const listingsQuery = query(collection(db, 'listings'), where('ownerId', '==', ownerId));
+          const listingsSnapshot = await getDocs(listingsQuery);
+          const currentListingsCount = listingsSnapshot.size;
+
+          if (currentListingsCount >= limit) {
+            toast({
+              variant: 'destructive',
+              title: 'Listing Limit Reached',
+              description: `${ownerName} has reached the maximum of ${limit} listings for their ${plan} plan.`,
+            });
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      }
+      
       const listingRef = doc(db, 'listings', listingId);
       
       await updateDoc(listingRef, {

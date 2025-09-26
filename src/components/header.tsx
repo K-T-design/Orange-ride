@@ -58,38 +58,42 @@ export function Header() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Defined admin emails
-        const adminEmails = ['admin@example.com', 'superadmin@example.com'];
-        
-        // 1. Check for Admin role FIRST
-        if (adminEmails.includes(user.email ?? '')) {
-            setUserState({ loggedIn: true, role: 'Admin', initials: 'A' });
-            return; // Stop further checks if user is an admin
-        }
-        
-        // 2. If not an admin, check Firestore for Customer/Ride Owner role
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        
         let role: UserState['role'] = null;
         let initials = 'U';
         let avatarUrl = undefined;
         
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          role = userData.role; // 'Customer' or 'Ride Owner'
-          if (userData.fullName) {
-            initials = userData.fullName.charAt(0).toUpperCase();
-          }
-          if (userData.profilePicture) {
-            avatarUrl = userData.profilePicture;
-          }
+        // Check for Admin role via custom claims
+        try {
+            const idTokenResult = await user.getIdTokenResult(true);
+            if (idTokenResult.claims.admin) {
+                role = 'Admin';
+                initials = 'A';
+            }
+        } catch (error) {
+            console.error("Error fetching user token for admin check:", error);
         }
 
+        // If not an admin, check Firestore for Customer/Ride Owner role
+        if (role !== 'Admin') {
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                role = userData.role; // 'Customer' or 'Ride Owner'
+                if (userData.fullName) {
+                    initials = userData.fullName.charAt(0).toUpperCase();
+                }
+                if (userData.profilePicture) {
+                    avatarUrl = userData.profilePicture;
+                }
+            }
+        }
+        
         setUserState({ loggedIn: true, role, initials, avatarUrl });
 
       } else {
-        // 3. Handle logged-out state
+        // Handle logged-out state
         setUserState({ loggedIn: false, role: null, initials: 'G' });
       }
     });

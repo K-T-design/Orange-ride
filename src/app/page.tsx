@@ -4,24 +4,49 @@ import { RideSearchForm } from '@/components/ride-search-form';
 import { RideCard } from '@/components/ride-card';
 import { placeholderImages } from '@/lib/placeholder-images';
 import { AdCarousel } from '@/components/ad-carousel';
-import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, orderBy, DocumentData } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Ride } from '@/lib/types';
 import { Search, CheckCircle, Phone } from 'lucide-react';
 
 async function getFeaturedRides(): Promise<Ride[]> {
   try {
-    // First, try to get up to 4 promoted rides
+    const processSnapshot = (snapshot: any): Ride[] => {
+      return snapshot.docs.map((doc: DocumentData) => {
+        const data = doc.data();
+        const ownerContact = data.contact || {};
+        return {
+          id: doc.id,
+          name: data.name || 'Unnamed Ride',
+          type: data.type || 'Car',
+          price: data.price || 0,
+          pickup: data.pickup || 'N/A',
+          destination: data.destination || 'N/A',
+          owner: {
+            name: data.owner || 'Information unavailable',
+            contact: {
+              phone: ownerContact.phone || '',
+              whatsapp: ownerContact.whatsapp || '',
+              email: ownerContact.email || ''
+            }
+          },
+          image: data.image || 'sedan-1',
+          isPromoted: data.isPromoted || data.status === 'Promoted' || false,
+          schedule: data.schedule || 'Not specified',
+          capacity: data.capacity,
+          description: data.description,
+        } as Ride;
+      });
+    };
+
     const promotedQuery = query(
       collection(db, 'listings'),
-      where('isPromoted', '==', true),
-      // where('status', '==', 'Approved'),
+      where('status', '==', 'Promoted'),
       limit(4)
     );
     const promotedSnapshot = await getDocs(promotedQuery);
-    let rides = promotedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
+    let rides = processSnapshot(promotedSnapshot);
 
-    // If there are fewer than 4 promoted rides, get the most recent approved rides to fill the gap
     if (rides.length < 4) {
       const needed = 4 - rides.length;
       const recentQuery = query(
@@ -32,9 +57,8 @@ async function getFeaturedRides(): Promise<Ride[]> {
       );
       const recentSnapshot = await getDocs(recentQuery);
       
-      // Add recent rides only if they aren't already in the list (as a promoted ride)
       const existingIds = new Set(rides.map(r => r.id));
-      const recentRides = recentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
+      const recentRides = processSnapshot(recentSnapshot);
       const filteredRecentRides = recentRides.filter(r => !existingIds.has(r.id));
       
       rides = [...rides, ...filteredRecentRides];
@@ -43,8 +67,6 @@ async function getFeaturedRides(): Promise<Ride[]> {
     return rides;
   } catch (error) {
     console.error("Error fetching featured rides: ", error);
-    // This error might happen if the composite index is not created in Firestore.
-    // As a fallback, just return an empty array.
     return [];
   }
 }
