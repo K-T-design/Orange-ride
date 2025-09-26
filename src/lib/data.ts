@@ -34,6 +34,14 @@ const planLimits = {
   'Yearly': Infinity,
 };
 
+const plans = {
+  None: { name: 'No Plan', price: 0, listings: 0, features: ['Cannot add listings'], cta: 'Choose a Plan', code: '' },
+  Weekly: { name: 'Weekly', price: 10000, listings: 9, features: ['Up to 9 vehicle listings', 'Basic support'], cta: 'Choose Weekly', code: 'PLN_anv9fhn6m82odm3' },
+  Monthly: { name: 'Monthly', price: 30000, listings: 50, features: ['Up to 50 vehicle listings', 'Priority support', 'Featured listing opportunities'], cta: 'Choose Monthly', code: 'PLN_18l64qb02hgsa97' },
+  Yearly: { name: 'Yearly', price: 120000, listings: Infinity, features: ['Unlimited vehicle listings', '24/7 dedicated support', 'Top placement in search'], cta: 'Choose Yearly', code: 'PLN_jfewzb4ui7qhm9g' },
+};
+
+
 export const RIDES: Ride[] = [
   {
     id: '1',
@@ -306,4 +314,4 @@ export const seedableFaqs = [
   { id: 'FAQ08', question: 'Is my personal information safe?', answer: 'Yes, we take data privacy seriously. Your personal information is stored securely and is only shared with ride owners when you initiate contact. Please see our Privacy Policy for more details.', category: 'Customer', isActive: true, createdAt: Timestamp.now() },
 ];
 
-export { NIGERIAN_CITIES, vehicleTypes, planLimits };
+export { NIGERIAN_CITIES, vehicleTypes, planLimits, plans };
