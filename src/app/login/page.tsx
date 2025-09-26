@@ -57,6 +57,8 @@ type LoginFormData = z.infer<typeof loginSchema>;
 const passwordValidation = z
   .string()
   .min(8, 'Password must be at least 8 characters.')
+  .refine((password) => /[a-z]/.test(password), 'Password must contain at least one lowercase letter.')
+  .refine((password) => /[A-Z]/.test(password), 'Password must contain at least one uppercase letter.')
   .refine((password) => /[0-9]/.test(password), 'Password must contain at least one number.')
   .refine(
     (password) => /[!@#$%^&*]/.test(password),
@@ -94,8 +96,6 @@ const signupSchema = z.discriminatedUnion('role', [customerSchema, rideOwnerSche
 
 type SignupFormData = z.infer<typeof signupSchema>;
 
-// Hardcoded admin UID for demo purposes
-const ADMIN_UID = 'XgQfA6sCVThsWw2g4iJpYc3F5yG3';
 
 // --- Login Component ---
 function LoginForm({ onSuccessfulSignup }: { onSuccessfulSignup: () => void }) {
@@ -118,11 +118,11 @@ function LoginForm({ onSuccessfulSignup }: { onSuccessfulSignup: () => void }) {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
       
-      const adminEmails = ['admin@example.com', 'superadmin@example.com'];
-      if (adminEmails.includes(user.email ?? '')) {
+      const idTokenResult = await user.getIdTokenResult();
+      // Securely check for admin custom claim
+      if (idTokenResult.claims.admin) {
          toast({ title: 'Admin Login Successful' });
-         // Redirect admins to homepage as well, they can navigate to /admin manually
-         router.push('/');
+         router.push('/admin'); // Redirect admins to admin dashboard
          return;
       }
 
@@ -134,7 +134,13 @@ function LoginForm({ onSuccessfulSignup }: { onSuccessfulSignup: () => void }) {
           title: 'Login Successful',
           description: `Welcome back!`,
         });
-        router.push('/'); // Redirect all users to the unified homepage
+        // Redirect non-admin users to their respective dashboards or homepage
+        const role = userDoc.data().role;
+        if (role === 'Ride Owner') {
+            router.push('/owner/dashboard');
+        } else {
+            router.push('/');
+        }
       } else {
         // This case should ideally not happen if signup is done correctly
         await auth.signOut();

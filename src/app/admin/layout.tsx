@@ -5,7 +5,7 @@ import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, 
 import { Home, Users, Car, CreditCard, Flag, Settings, LogOut, Megaphone, Bell, HelpCircle, Info, Mail } from "lucide-react";
 import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +25,57 @@ const adminNavLinks = [
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
+// A custom hook to manage admin authentication
+function useAdminAuth() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        if (pathname !== '/admin/login') {
+          router.push('/admin/login');
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const idTokenResult = await user.getIdTokenResult(true); // Force refresh
+        if (idTokenResult.claims.admin) {
+          // User is an admin, allow access
+           if (pathname === '/admin/login') {
+            router.push('/admin');
+          }
+          setIsLoading(false);
+        } else {
+          // User is logged in but not an admin, deny access
+          toast({
+            variant: "destructive",
+            title: "Access Denied",
+            description: "You do not have permission to access the admin panel.",
+          });
+          router.push('/');
+        }
+      } catch (error) {
+          console.error("Error verifying admin token:", error);
+          toast({
+            variant: "destructive",
+            title: "Authentication Error",
+            description: "Could not verify your authentication status.",
+          });
+          router.push('/login');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router, pathname]);
+
+  return { isLoading };
+}
+
+
 // A helper function to get the page title from the pathname
 const getPageTitle = (pathname: string) => {
     if (pathname === '/admin') return 'Dashboard';
@@ -40,31 +91,14 @@ const getPageTitle = (pathname: string) => {
 
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isClient, setIsClient] = useState(false);
+  const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
-  const { toast } = useToast();
+  
+  // If we are on the login page, don't run the auth hook yet.
+  const isLoginPage = pathname === '/admin/login';
+  const { isLoading } = !isLoginPage ? useAdminAuth() : { isLoading: false };
 
-  useEffect(() => {
-    setIsClient(true);
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        if (pathname !== '/admin/login') {
-          router.push('/admin/login');
-        } else {
-          setIsLoading(false);
-        }
-      } else {
-        if (pathname === '/admin/login') {
-          router.push('/admin');
-        } else {
-          setIsLoading(false);
-        }
-      }
-    });
-    return () => unsubscribe();
-  }, [router, pathname]);
 
   const handleLogout = async () => {
     try {
@@ -84,15 +118,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   };
 
 
-  if (isLoading) {
-    if (pathname === '/admin/login') {
-        return <>{children}</>
-    }
+  if (isLoading && !isLoginPage) {
     return (
         <div className="flex h-screen items-center justify-center">
             <div className="flex flex-col items-center gap-4">
                 <Car className="h-12 w-12 animate-pulse text-primary" />
-                <p className="text-lg font-semibold">Authenticating...</p>
+                <p className="text-lg font-semibold">Verifying Admin Access...</p>
                 <div className="w-64 space-y-4">
                     <Skeleton className="h-8 w-full" />
                     <Skeleton className="h-8 w-full" />
@@ -103,19 +134,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  if (pathname === '/admin/login') {
+  if (isLoginPage) {
       return <>{children}</>;
   }
   
-  if (!isClient) {
-    return (
-        <div className="flex h-screen items-center justify-center">
-             <div className="flex flex-col items-center gap-4">
-                <Car className="h-12 w-12 animate-pulse text-primary" />
-             </div>
-        </div>
-    );
-  }
 
   return (
     <SidebarProvider>
