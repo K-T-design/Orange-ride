@@ -1,11 +1,9 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { useRouter } from 'next/navigation';
 import { usePaystackPayment } from 'react-paystack';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -14,12 +12,12 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, Crown, Loader2, Calendar } from 'lucide-react';
+import { CheckCircle, Loader2, Calendar } from 'lucide-react';
 import { plans } from '@/lib/data';
 import { Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 import type { PlanKey } from '@/lib/types';
-import { initializePayment, verifyPayment } from '@/lib/paystack';
+import { verifyPayment } from '@/lib/paystack';
 
 
 type SubscriptionInfo = {
@@ -37,7 +35,6 @@ export default function SubscriptionPage() {
   const [selectedPlan, setSelectedPlan] = useState<PlanKey | null>(null);
   const [isClient, setIsClient] = useState(false);
 
-  const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -74,14 +71,7 @@ export default function SubscriptionPage() {
       setIsLoading(false);
     }
   }, [user, loadingAuth]);
-
   
-  const currentPlanKey = subscription?.plan || 'None';
-  const currentPlanDetails = plans[currentPlanKey];
-  const usagePercentage = currentPlanDetails.listings > 0 && currentPlanDetails.listings !== Infinity 
-    ? (listingCount / currentPlanDetails.listings) * 100 
-    : 0;
-    
   const onSuccess = async (transaction: { reference: string }) => {
     toast({
       title: "Processing Verification...",
@@ -116,7 +106,7 @@ export default function SubscriptionPage() {
         description: 'The payment process was not completed.',
     });
   };
-
+  
   const paystackConfig = {
     publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
     email: user?.email || '',
@@ -126,60 +116,40 @@ export default function SubscriptionPage() {
     },
     amount: (selectedPlan ? plans[selectedPlan].price : 0) * 100,
     reference: new Date().getTime().toString(),
-    onSuccess,
-    onClose,
   };
   
   const initializePaystack = usePaystackPayment(paystackConfig);
 
-
-  const handleSelectPlan = async (planKey: PlanKey) => {
-    if (!user || !user.email) {
+  const handleSelectPlan = (planKey: PlanKey) => {
+    if (!user?.email) {
       toast({ variant: 'destructive', title: 'You must be logged in to subscribe.' });
       return;
     }
-    
+
     setIsProcessingPayment(true);
     setSelectedPlan(planKey);
 
-    try {
-      const planDetails = plans[planKey];
-      if (!planDetails) throw new Error('Invalid plan selected.');
-
-      const result = await initializePayment(planKey, user.uid, user.email);
-
-      if (result.error || !result.reference) {
-        throw new Error(result.error || 'Failed to initialize payment reference.');
-      }
-      
-      const updatedConfig = {
-        ...paystackConfig,
-        amount: planDetails.price * 100,
-        reference: result.reference,
-        metadata: {
-          user_id: user.uid,
-          plan: planKey,
-        },
-      };
-
-      initializePaystack({
-        ...updatedConfig,
-        onSuccess,
-        onClose,
-      });
-
-    } catch (error: any) {
-      console.error('Error during payment initialization:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Payment Error',
-        description: error.message || 'Could not start the payment process. Please try again.',
-      });
-      setIsProcessingPayment(false);
-      setSelectedPlan(null);
+    const planDetails = plans[planKey];
+    if (!planDetails) {
+        toast({ variant: 'destructive', title: 'Invalid plan selected.' });
+        setIsProcessingPayment(false);
+        return;
     }
+    
+    // Update config before calling
+    paystackConfig.amount = planDetails.price * 100;
+    paystackConfig.metadata.plan = planKey;
+    paystackConfig.reference = new Date().getTime().toString();
+    
+    // Correctly call the initializePayment function
+    initializePaystack(onSuccess, onClose);
   };
-  
+
+  const currentPlanKey = subscription?.plan || 'None';
+  const currentPlanDetails = plans[currentPlanKey];
+  const usagePercentage = currentPlanDetails.listings > 0 && currentPlanDetails.listings !== Infinity 
+    ? (listingCount / currentPlanDetails.listings) * 100 
+    : 0;
 
   if (isLoading || loadingAuth) {
     return (
