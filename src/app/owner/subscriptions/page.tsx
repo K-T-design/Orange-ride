@@ -19,7 +19,7 @@ import { plans } from '@/lib/data';
 import { Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 import type { PlanKey } from '@/lib/types';
-import { initializePayment } from '@/lib/paystack';
+import { initializePayment, verifyPayment } from '@/lib/paystack';
 
 
 type SubscriptionInfo = {
@@ -88,16 +88,28 @@ export default function SubscriptionPage() {
       plan: selectedPlan || '',
     },
   };
-
-  const { initializePayment: initializePaystack, ...paystackState } = usePaystackPayment(paystackConfig);
   
-  const onSuccess = (transaction: any) => {
-    // In the next phase, we will call our backend to verify the transaction reference
-    console.log('Paystack transaction successful:', transaction);
+  const onSuccess = async (transaction: { reference: string }) => {
     toast({
-      title: "Payment Successful!",
-      description: "Your payment is being verified. Your subscription will be updated shortly.",
+      title: "Processing Verification...",
+      description: "Please wait while we confirm your payment.",
     });
+    
+    const result = await verifyPayment(transaction.reference);
+
+    if (result.status === 'success') {
+        toast({
+            title: "Payment Verified!",
+            description: "Your subscription has been activated.",
+        });
+    } else {
+         toast({
+            variant: 'destructive',
+            title: "Verification Failed",
+            description: result.message || "We could not confirm your payment with Paystack.",
+        });
+    }
+
     setIsProcessingPayment(false);
     setSelectedPlan(null);
   };
@@ -111,6 +123,8 @@ export default function SubscriptionPage() {
         description: 'The payment process was not completed.',
     });
   };
+
+  const initializePaystack = usePaystackPayment(paystackConfig);
 
   const handleSelectPlan = async (planKey: PlanKey) => {
     if (!user || !user.email) {
