@@ -3,9 +3,8 @@
 
 import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, query, where, onSnapshot, doc, updateDoc, getDoc, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { usePaystackPayment } from 'react-paystack';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,9 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, Zap, Crown, Loader2, Calendar } from 'lucide-react';
+import { CheckCircle, Crown, Loader2, Calendar } from 'lucide-react';
 import { plans } from '@/lib/data';
-import { initializePayment, verifyPayment } from '@/lib/paystack';
 import { Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 
@@ -32,8 +30,7 @@ export default function SubscriptionPage() {
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [listingCount, setListingCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [isProcessingPayment, setIsProcessingPayment] = useState<PlanKey | null>(null);
-
+  
   const { toast } = useToast();
 
   useEffect(() => {
@@ -69,49 +66,11 @@ export default function SubscriptionPage() {
     }
   }, [user, loadingAuth]);
 
-  const paystackConfig = {
-    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
-    email: user?.email || '',
-  };
-
-  const initializePaystack = usePaystackPayment(paystackConfig);
-
   const handleSelectPlan = async (planKey: PlanKey) => {
     if (!user || planKey === subscription?.plan) return;
-    
-    setIsProcessingPayment(planKey);
-    try {
-      const response = await initializePayment(planKey, user.uid);
-      
-      if (response.status && response.data) {
-        const paymentConfig = {
-            ...paystackConfig,
-            amount: plans[planKey].price * 100,
-            reference: response.data.reference,
-            plan: plans[planKey].code,
-            onSuccess: (transaction: any) => {
-                toast({ title: "Payment Successful!", description: `Reference: ${transaction.reference}. Your plan will be updated shortly.`});
-                // We rely on the webhook for activation, but can trigger a client-side verification as a fallback
-                verifyPayment(transaction.reference);
-            },
-            onClose: () => {
-                toast({ variant: 'destructive', title: 'Payment cancelled.' });
-            },
-        };
-        initializePaystack(paymentConfig);
-      } else {
-        throw new Error(response.message || 'Failed to initialize payment.');
-      }
-    } catch (error: any) {
-        console.error("Error initializing payment: ", error);
-        toast({
-            variant: 'destructive',
-            title: 'Payment Error',
-            description: error.message || 'Could not start the payment process. Please try again.',
-        });
-    } finally {
-        setIsProcessingPayment(null);
-    }
+    toast({ title: "Redirecting to payment...", description: `You have selected the ${planKey} plan.` });
+    // TODO: Implement payment initialization and redirect logic here.
+    console.log("Selected plan:", planKey);
   };
   
   const currentPlanKey = subscription?.plan || 'None';
@@ -204,10 +163,8 @@ export default function SubscriptionPage() {
                            </ul>
                         </CardContent>
                         <CardFooter>
-                            <Button className="w-full" onClick={() => handleSelectPlan(planKey)} disabled={isCurrent || isProcessingPayment !== null}>
-                                {isProcessingPayment === planKey ? (
-                                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Initializing...</>
-                                ) : isCurrent ? 'Current Plan' : plan.cta}
+                            <Button className="w-full" onClick={() => handleSelectPlan(planKey)} disabled={isCurrent}>
+                                {isCurrent ? 'Current Plan' : plan.cta}
                             </Button>
                         </CardFooter>
                     </Card>
@@ -219,5 +176,3 @@ export default function SubscriptionPage() {
     </div>
   );
 }
-
-    
