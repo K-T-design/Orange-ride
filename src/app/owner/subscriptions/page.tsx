@@ -35,17 +35,17 @@ export default function SubscriptionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanKey | null>(null);
-  const [isClient, setIsClient] = useState(false); // State to prevent hydration mismatch
+  const [isClient, setIsClient] = useState(false);
 
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
-    // This ensures that any client-specific rendering happens only after the component has mounted.
     setIsClient(true);
+  }, []);
 
+  useEffect(() => {
     if (user) {
-      // Listener for subscription info
       const subsQuery = query(collection(db, 'subscriptions'), where('ownerId', '==', user.uid));
       const unsubSubs = onSnapshot(subsQuery, (snapshot) => {
         if (!snapshot.empty) {
@@ -61,7 +61,6 @@ export default function SubscriptionPage() {
         setIsLoading(false);
       });
 
-      // Listener for listings count
       const listingsQuery = query(collection(db, 'listings'), where('ownerId', '==', user.uid));
       const unsubListings = onSnapshot(listingsQuery, (snapshot) => {
         setListingCount(snapshot.size);
@@ -83,16 +82,6 @@ export default function SubscriptionPage() {
     ? (listingCount / currentPlanDetails.listings) * 100 
     : 0;
     
-  // --- Paystack Integration Logic ---
-  const paystackConfig = {
-    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
-    email: user?.email || '',
-    metadata: {
-      user_id: user?.uid || '',
-      plan: selectedPlan || '',
-    },
-  };
-  
   const onSuccess = async (transaction: { reference: string }) => {
     toast({
       title: "Processing Verification...",
@@ -128,7 +117,21 @@ export default function SubscriptionPage() {
     });
   };
 
+  const paystackConfig = {
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+    email: user?.email || '',
+    metadata: {
+      user_id: user?.uid || '',
+      plan: selectedPlan || '',
+    },
+    amount: (selectedPlan ? plans[selectedPlan].price : 0) * 100,
+    reference: new Date().getTime().toString(),
+    onSuccess,
+    onClose,
+  };
+  
   const initializePaystack = usePaystackPayment(paystackConfig);
+
 
   const handleSelectPlan = async (planKey: PlanKey) => {
     if (!user || !user.email) {
@@ -143,22 +146,26 @@ export default function SubscriptionPage() {
       const planDetails = plans[planKey];
       if (!planDetails) throw new Error('Invalid plan selected.');
 
-      // 1. Call our backend to get a reference
       const result = await initializePayment(planKey, user.uid, user.email);
 
       if (result.error || !result.reference) {
         throw new Error(result.error || 'Failed to initialize payment reference.');
       }
       
-      // 2. Use the reference to open the Paystack modal
-      initializePaystack({ 
-        onSuccess, 
-        onClose, 
-        config: {
-          ...paystackConfig,
-          amount: planDetails.price * 100, // Amount must be in kobo
-          reference: result.reference,
-        } 
+      const updatedConfig = {
+        ...paystackConfig,
+        amount: planDetails.price * 100,
+        reference: result.reference,
+        metadata: {
+          user_id: user.uid,
+          plan: planKey,
+        },
+      };
+
+      initializePaystack({
+        ...updatedConfig,
+        onSuccess,
+        onClose,
       });
 
     } catch (error: any) {
