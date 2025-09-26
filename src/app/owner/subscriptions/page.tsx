@@ -6,6 +6,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { usePaystackPayment } from 'react-paystack';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import { plans } from '@/lib/data';
 import { Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 import type { PlanKey } from '@/lib/types';
+import { initializePayment } from '@/lib/paystack';
 
 
 type SubscriptionInfo = {
@@ -31,6 +33,8 @@ export default function SubscriptionPage() {
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [listingCount, setListingCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey | null>(null);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -74,6 +78,83 @@ export default function SubscriptionPage() {
   const usagePercentage = currentPlanDetails.listings > 0 && currentPlanDetails.listings !== Infinity 
     ? (listingCount / currentPlanDetails.listings) * 100 
     : 0;
+    
+  // --- Paystack Integration Logic ---
+  const paystackConfig = {
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+    email: user?.email || '',
+    metadata: {
+      user_id: user?.uid || '',
+      plan: selectedPlan || '',
+    },
+  };
+
+  const { initializePayment: initializePaystack, ...paystackState } = usePaystackPayment(paystackConfig);
+  
+  const onSuccess = (transaction: any) => {
+    // In the next phase, we will call our backend to verify the transaction reference
+    console.log('Paystack transaction successful:', transaction);
+    toast({
+      title: "Payment Successful!",
+      description: "Your payment is being verified. Your subscription will be updated shortly.",
+    });
+    setIsProcessingPayment(false);
+    setSelectedPlan(null);
+  };
+
+  const onClose = () => {
+    setIsProcessingPayment(false);
+    setSelectedPlan(null);
+    toast({
+        variant: 'destructive',
+        title: 'Payment Modal Closed',
+        description: 'The payment process was not completed.',
+    });
+  };
+
+  const handleSelectPlan = async (planKey: PlanKey) => {
+    if (!user || !user.email) {
+      toast({ variant: 'destructive', title: 'You must be logged in to subscribe.' });
+      return;
+    }
+    
+    setIsProcessingPayment(true);
+    setSelectedPlan(planKey);
+
+    try {
+      const planDetails = plans[planKey];
+      if (!planDetails) throw new Error('Invalid plan selected.');
+
+      // 1. Call our backend to get a reference
+      const result = await initializePayment(planKey, user.uid, user.email);
+
+      if (result.error || !result.reference) {
+        throw new Error(result.error || 'Failed to initialize payment reference.');
+      }
+      
+      // 2. Use the reference to open the Paystack modal
+      initializePaystack({ 
+        onSuccess, 
+        onClose, 
+        config: {
+          ...paystackConfig,
+          amount: planDetails.price * 100, // Amount must be in kobo
+          reference: result.reference,
+        } 
+      });
+
+    } catch (error: any) {
+      console.error('Error during payment initialization:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Payment Error',
+        description: error.message || 'Could not start the payment process. Please try again.',
+      });
+      setIsProcessingPayment(false);
+      setSelectedPlan(null);
+    }
+  };
+  
 
   if (isLoading || loadingAuth) {
     return (
@@ -160,7 +241,12 @@ export default function SubscriptionPage() {
                            </ul>
                         </CardContent>
                         <CardFooter>
-                            <Button className="w-full" disabled={isCurrent}>
+                            <Button 
+                                className="w-full" 
+                                disabled={isCurrent || isProcessingPayment}
+                                onClick={() => handleSelectPlan(planKey)}
+                            >
+                                {isProcessingPayment && selectedPlan === planKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {isCurrent ? 'Current Plan' : plan.cta}
                             </Button>
                         </CardFooter>
