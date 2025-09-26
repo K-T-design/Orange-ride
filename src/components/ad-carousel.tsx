@@ -1,5 +1,5 @@
 
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AdCarouselClient } from './ad-carousel-client';
 
@@ -13,14 +13,26 @@ type Ad = {
   createdAt: any;
 };
 
-async function getActiveAds(): Promise<Ad[]> {
+// This type will be used on the server and includes the unserialized Timestamp
+type FirestoreAd = Omit<Ad, 'createdAt'> & { createdAt: Timestamp };
+
+async function getActiveAds() {
     try {
         const q = query(
             collection(db, 'advertisements'), 
             where('isActive', '==', true)
         );
         const snapshot = await getDocs(q);
-        const adsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Ad));
+        
+        const adsData = snapshot.docs.map((doc) => {
+            const data = doc.data() as FirestoreAd;
+            // Serialize the createdAt field before passing to the client
+            return { 
+                id: doc.id, 
+                ...data,
+                createdAt: data.createdAt.toDate().toISOString(), 
+            }
+        });
         
         // Sort on the server side
         const sortedAds = adsData.sort((a, b) => {
@@ -29,10 +41,8 @@ async function getActiveAds(): Promise<Ad[]> {
             if (priorityA !== priorityB) {
                 return priorityB - priorityA;
             }
-            // Firestore Timestamps need to be converted for sorting
-            const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-            const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-            return timeB - timeA;
+            // Sort by date string
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
         return sortedAds;
     } catch (error) {

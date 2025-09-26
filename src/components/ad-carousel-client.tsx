@@ -15,7 +15,7 @@ type Ad = {
   link?: string;
   isActive: boolean;
   priority?: number;
-  createdAt: any;
+  createdAt: string; // The type is now a string
 };
 
 export function AdCarouselClient({ ads }: { ads: Ad[] }) {
