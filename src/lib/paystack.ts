@@ -1,7 +1,7 @@
 
 'use server';
 
-import { doc, getDoc, updateDoc, collection, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, addDoc, serverTimestamp, Timestamp, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { plans } from '@/lib/data';
 
@@ -45,8 +45,7 @@ export async function initializePayment(plan: PlanKey, userId: string): Promise<
             },
             body: JSON.stringify({
                 email: userEmail,
-                amount: planDetails.price * 100, // Amount in kobo is required
-                plan: planDetails.code, // The plan code
+                plan: planDetails.code, // Use the plan code to define amount and interval
                 metadata: {
                     user_id: userId,
                     plan: plan,
@@ -96,8 +95,10 @@ export async function verifyPayment(reference: string): Promise<VerificationResp
         
         if (data.status && data.data.status === 'success') {
             const { metadata } = data.data;
-            const userId = metadata.user_id;
-            const plan = metadata.plan as PlanKey;
+            // Paystack might send metadata as a string, so we ensure it's parsed
+            const parsedMetadata = typeof metadata === 'string' ? JSON.parse(metadata) : metadata;
+            const userId = parsedMetadata.user_id;
+            const plan = parsedMetadata.plan as PlanKey;
 
             await activateSubscription(userId, plan, reference);
             
@@ -139,9 +140,15 @@ export async function activateSubscription(userId: string, plan: PlanKey, refere
         lastUpdatedAt: serverTimestamp(),
     };
     
-    // In a real scenario, you'd query for an existing subscription to update it.
-    // For this implementation, we'll add a new one, but a more robust system would update or archive old ones.
-    await addDoc(collection(db, 'subscriptions'), subscriptionData);
+    const subsQuery = query(collection(db, 'subscriptions'), where('ownerId', '==', userId));
+    const existingSubSnapshot = await getDocs(subsQuery);
+
+    if (!existingSubSnapshot.empty) {
+        const existingSubDoc = existingSubSnapshot.docs[0];
+        await updateDoc(doc(db, 'subscriptions', existingSubDoc.id), subscriptionData);
+    } else {
+        await addDoc(collection(db, 'subscriptions'), subscriptionData);
+    }
     
     // Also update the plan on the rideOwners document for quick access
     await updateDoc(ownerDocRef, { plan: plan, status: 'Active' });
