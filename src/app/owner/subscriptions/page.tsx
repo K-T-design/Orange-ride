@@ -35,11 +35,15 @@ export default function SubscriptionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanKey | null>(null);
+  const [isClient, setIsClient] = useState(false); // State to prevent hydration mismatch
 
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
+    // This ensures that any client-specific rendering happens only after the component has mounted.
+    setIsClient(true);
+
     if (user) {
       // Listener for subscription info
       const subsQuery = query(collection(db, 'subscriptions'), where('ownerId', '==', user.uid));
@@ -215,7 +219,11 @@ export default function SubscriptionPage() {
                             <Calendar className="h-4 w-4 text-muted-foreground" />
                              <span>Expires on</span>
                         </div>
-                        <p className="text-sm text-muted-foreground">{format(subscription.expiryDate, 'PPP')}</p>
+                        {isClient ? (
+                            <p className="text-sm text-muted-foreground">{format(subscription.expiryDate, 'PPP')}</p>
+                        ) : (
+                            <Skeleton className="h-5 w-24 mt-1" />
+                        )}
                     </div>
                 )}
             </div>
