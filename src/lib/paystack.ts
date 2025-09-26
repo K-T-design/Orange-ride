@@ -46,7 +46,7 @@ export async function initializePayment(plan: PlanKey, userId: string): Promise<
             body: JSON.stringify({
                 email: userEmail,
                 amount: planDetails.price * 100, // Paystack expects amount in kobo
-                plan: planDetails.code,
+                plan: planDetails.code, // Use the plan code for subscriptions
                 metadata: {
                     user_id: userId,
                     plan: plan,
