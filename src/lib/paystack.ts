@@ -5,7 +5,6 @@ import { doc, getDoc, updateDoc, addDoc, collection, query, where, getDocs, Time
 import { db } from '@/lib/firebase';
 import { plans } from '@/lib/data';
 import type { PlanKey } from '@/lib/types';
-import * as crypto from 'crypto';
 
 
 /**
@@ -49,7 +48,7 @@ export async function initializePayment(planKey: PlanKey, userId: string, userEm
         const data = await response.json();
 
         if (!response.ok || !data.status) {
-            console.error('Paystack API Error:', data);
+            console.error('Detailed Paystack API Error:', data);
             return { success: false, message: data.message || 'Failed to initialize payment.' };
         }
 
