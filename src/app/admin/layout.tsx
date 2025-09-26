@@ -33,11 +33,16 @@ function useAdminAuth() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // If we are on the login page, don't run the auth check.
+    const isLoginPage = pathname === '/admin/login';
+    if (isLoginPage) {
+        setIsLoading(false);
+        return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        if (pathname !== '/admin/login') {
-          router.push('/admin/login');
-        }
+        router.push('/admin/login');
         setIsLoading(false);
         return;
       }
@@ -57,6 +62,7 @@ function useAdminAuth() {
             title: "Access Denied",
             description: "You do not have permission to access the admin panel.",
           });
+          signOut(auth); // Sign out the non-admin user
           router.push('/');
         }
       } catch (error) {
@@ -66,6 +72,7 @@ function useAdminAuth() {
             title: "Authentication Error",
             description: "Could not verify your authentication status.",
           });
+          signOut(auth);
           router.push('/login');
       }
     });
@@ -96,10 +103,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   
-  // If we are on the login page, don't run the auth hook yet.
+  const { isLoading } = useAdminAuth();
   const isLoginPage = pathname === '/admin/login';
-  const { isLoading } = !isLoginPage ? useAdminAuth() : { isLoading: false };
-
 
   const handleLogout = async () => {
     try {
