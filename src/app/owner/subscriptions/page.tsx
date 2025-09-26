@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { usePaystackPayment } from 'react-paystack';
+import { usePaystackPayment, PaystackProps } from 'react-paystack';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,12 +19,60 @@ import { format } from 'date-fns';
 import type { PlanKey } from '@/lib/types';
 import { verifyPayment } from '@/lib/paystack';
 
-
 type SubscriptionInfo = {
   plan: PlanKey;
   status: 'Active' | 'Expired' | 'Suspended' | 'None';
   expiryDate: Date | null;
-}
+};
+
+// 1. Create a dedicated button component for Paystack
+const PaystackButton = ({
+  planKey,
+  user,
+  isCurrent,
+  isProcessing,
+  onClick,
+  onSuccess,
+  onClose,
+}: {
+  planKey: PlanKey;
+  user: any;
+  isCurrent: boolean;
+  isProcessing: boolean;
+  onClick: () => void;
+  onSuccess: (transaction: { reference: string }) => void;
+  onClose: () => void;
+}) => {
+  const planDetails = plans[planKey];
+
+  const config: PaystackProps = {
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+    email: user.email,
+    amount: planDetails.price * 100,
+    reference: new Date().getTime().toString(),
+    metadata: {
+      user_id: user.uid,
+      plan: planKey,
+    },
+  };
+
+  const initializePayment = usePaystackPayment(config);
+
+  return (
+    <Button
+      className="w-full"
+      disabled={isCurrent || isProcessing}
+      onClick={() => {
+        onClick();
+        initializePayment(onSuccess, onClose);
+      }}
+    >
+      {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+      {isCurrent ? 'Current Plan' : planDetails.cta}
+    </Button>
+  );
+};
+
 
 export default function SubscriptionPage() {
   const [user, loadingAuth] = useAuthState(auth);
@@ -78,23 +126,31 @@ export default function SubscriptionPage() {
       description: "Please wait while we confirm your payment.",
     });
     
-    const result = await verifyPayment(transaction.reference);
+    try {
+      const result = await verifyPayment(transaction.reference);
 
-    if (result.status === 'success') {
-        toast({
-            title: "Payment Verified!",
-            description: "Your subscription has been activated.",
-        });
-    } else {
-         toast({
+      if (result.status === 'success') {
+          toast({
+              title: "Payment Verified!",
+              description: "Your subscription has been activated.",
+          });
+      } else {
+           toast({
+              variant: 'destructive',
+              title: "Verification Failed",
+              description: result.message || "We could not confirm your payment with Paystack.",
+          });
+      }
+    } catch (error) {
+       toast({
             variant: 'destructive',
-            title: "Verification Failed",
-            description: result.message || "We could not confirm your payment with Paystack.",
+            title: "Verification Error",
+            description: "An unexpected error occurred while verifying your payment.",
         });
+    } finally {
+        setIsProcessingPayment(false);
+        setSelectedPlan(null);
     }
-
-    setIsProcessingPayment(false);
-    setSelectedPlan(null);
   };
 
   const onClose = () => {
@@ -105,44 +161,6 @@ export default function SubscriptionPage() {
         title: 'Payment Modal Closed',
         description: 'The payment process was not completed.',
     });
-  };
-  
-  const paystackConfig = {
-    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
-    email: user?.email || '',
-    metadata: {
-      user_id: user?.uid || '',
-      plan: selectedPlan || '',
-    },
-    amount: (selectedPlan ? plans[selectedPlan].price : 0) * 100,
-    reference: new Date().getTime().toString(),
-  };
-  
-  const initializePaystack = usePaystackPayment(paystackConfig);
-
-  const handleSelectPlan = (planKey: PlanKey) => {
-    if (!user?.email) {
-      toast({ variant: 'destructive', title: 'You must be logged in to subscribe.' });
-      return;
-    }
-
-    setIsProcessingPayment(true);
-    setSelectedPlan(planKey);
-
-    const planDetails = plans[planKey];
-    if (!planDetails) {
-        toast({ variant: 'destructive', title: 'Invalid plan selected.' });
-        setIsProcessingPayment(false);
-        return;
-    }
-    
-    // Update config before calling
-    paystackConfig.amount = planDetails.price * 100;
-    paystackConfig.metadata.plan = planKey;
-    paystackConfig.reference = new Date().getTime().toString();
-    
-    // Correctly call the initializePayment function
-    initializePaystack(onSuccess, onClose);
   };
 
   const currentPlanKey = subscription?.plan || 'None';
@@ -216,15 +234,15 @@ export default function SubscriptionPage() {
       <div className="space-y-4">
         <h2 className="text-2xl font-bold font-headline text-center">Choose Your Plan</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.entries(plans).filter(([key]) => key !== 'None').map(([key, plan]) => {
-                const isCurrent = currentPlanKey === key;
-                const planKey = key as PlanKey;
+            {(Object.keys(plans) as PlanKey[]).filter((key) => key !== 'None').map((planKey) => {
+                const plan = plans[planKey];
+                const isCurrent = currentPlanKey === planKey;
 
                 return (
-                    <Card key={key} className={`flex flex-col ${isCurrent ? 'border-primary border-2' : ''}`}>
+                    <Card key={planKey} className={`flex flex-col ${isCurrent ? 'border-primary border-2' : ''}`}>
                         <CardHeader className="text-center">
                             <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                            <p className="text-3xl font-bold">₦{plan.price.toLocaleString()}<span className="text-sm font-normal text-muted-foreground">/{key === 'Weekly' ? 'wk' : key === 'Monthly' ? 'mo' : 'yr'}</span></p>
+                            <p className="text-3xl font-bold">₦{plan.price.toLocaleString()}<span className="text-sm font-normal text-muted-foreground">/{planKey === 'Weekly' ? 'wk' : planKey === 'Monthly' ? 'mo' : 'yr'}</span></p>
                         </CardHeader>
                         <CardContent className="flex-grow space-y-4">
                            <div className="text-center">
@@ -240,14 +258,20 @@ export default function SubscriptionPage() {
                            </ul>
                         </CardContent>
                         <CardFooter>
-                            <Button 
-                                className="w-full" 
-                                disabled={isCurrent || isProcessingPayment}
-                                onClick={() => handleSelectPlan(planKey)}
-                            >
-                                {isProcessingPayment && selectedPlan === planKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {isCurrent ? 'Current Plan' : plan.cta}
-                            </Button>
+                           {user && (
+                              <PaystackButton
+                                planKey={planKey}
+                                user={user}
+                                isCurrent={isCurrent}
+                                isProcessing={isProcessingPayment && selectedPlan === planKey}
+                                onClick={() => {
+                                  setIsProcessingPayment(true);
+                                  setSelectedPlan(planKey);
+                                }}
+                                onSuccess={onSuccess}
+                                onClose={onClose}
+                              />
+                           )}
                         </CardFooter>
                     </Card>
                 )
