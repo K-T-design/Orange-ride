@@ -1,10 +1,10 @@
+
 'use server';
 
 import { doc, getDoc, updateDoc, addDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { plans } from '@/lib/data';
 import type { PlanKey } from '@/lib/types';
-import { headers } from 'next/headers';
 import * as crypto from 'crypto';
 
 
@@ -23,15 +23,12 @@ export async function initializePayment(planKey: PlanKey, userId: string, userEm
     }
 
     const amountInKobo = planDetails.price * 100;
-    
-    const host = headers().get('host');
-    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-    // Redirect to a simple confirmation page. Verification will be handled by webhook.
-    const callback_url = `${protocol}://${host}/payment-complete`;
+    const callback_url = "/owner/subscriptions/verify";
 
     const payload = {
         email: userEmail,
         amount: amountInKobo,
+        plan: planDetails.code,
         callback_url,
         metadata: {
             user_id: userId,
