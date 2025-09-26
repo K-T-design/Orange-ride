@@ -29,6 +29,7 @@ const adminNavLinks = [
 function useAdminAuth() {
   const router = useRouter();
   const pathname = usePathname();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -70,7 +71,7 @@ function useAdminAuth() {
     });
 
     return () => unsubscribe();
-  }, [router, pathname]);
+  }, [router, pathname, toast]);
 
   return { isLoading };
 }
