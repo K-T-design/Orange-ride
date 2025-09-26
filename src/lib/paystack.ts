@@ -45,7 +45,7 @@ export async function initializePayment(plan: PlanKey, userId: string): Promise<
             },
             body: JSON.stringify({
                 email: userEmail,
-                plan: planDetails.code, // Use the plan code for subscriptions
+                plan_code: planDetails.code, // Use the plan code for subscriptions
                 metadata: {
                     user_id: userId,
                     plan: plan,
