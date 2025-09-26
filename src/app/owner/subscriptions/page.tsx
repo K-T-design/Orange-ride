@@ -1,9 +1,11 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, where, onSnapshot, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+import { usePaystackPayment } from 'react-paystack';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,14 +13,9 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, Zap, Crown } from 'lucide-react';
-
-const plans = {
-  None: { name: 'No Plan', price: 0, listings: 0, features: ['Cannot add listings'], cta: 'Choose a Plan' },
-  Weekly: { name: 'Weekly', price: 10000, listings: 9, features: ['Up to 9 vehicle listings', 'Basic support'], cta: 'Upgrade to Weekly' },
-  Monthly: { name: 'Monthly', price: 30000, listings: 50, features: ['Up to 50 vehicle listings', 'Priority support', 'Featured listing opportunities'], cta: 'Upgrade to Monthly' },
-  Yearly: { name: 'Yearly', price: 120000, listings: Infinity, features: ['Unlimited vehicle listings', '24/7 dedicated support', 'Top placement in search'], cta: 'Upgrade to Yearly' },
-};
+import { CheckCircle, Zap, Crown, Loader2 } from 'lucide-react';
+import { plans } from '@/lib/data';
+import { initializePayment, verifyPayment } from '@/lib/paystack';
 
 type PlanKey = keyof typeof plans;
 
@@ -27,23 +24,19 @@ export default function SubscriptionPage() {
   const [currentPlan, setCurrentPlan] = useState<PlanKey>('None');
   const [listingCount, setListingCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessingPayment, setIsProcessingPayment] = useState<PlanKey | null>(null);
+
   const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
-      // Listen for subscription plan changes
       const ownerDocRef = doc(db, 'rideOwners', user.uid);
       const unsubOwner = onSnapshot(ownerDocRef, (doc) => {
         const data = doc.data();
-        if (data && data.plan && Object.keys(plans).includes(data.plan)) {
-          setCurrentPlan(data.plan as PlanKey);
-        } else {
-          setCurrentPlan('None');
-        }
+        setCurrentPlan(data?.plan as PlanKey || 'None');
         setIsLoading(false);
       });
 
-      // Listen for listing count changes
       const listingsQuery = query(collection(db, 'listings'), where('ownerId', '==', user.uid));
       const unsubListings = onSnapshot(listingsQuery, (snapshot) => {
         setListingCount(snapshot.size);
@@ -54,40 +47,58 @@ export default function SubscriptionPage() {
         unsubListings();
       };
     } else if (!loadingAuth) {
-      // Handle case where user is not logged in but auth is not loading
       setIsLoading(false);
     }
   }, [user, loadingAuth]);
 
+  const paystackConfig = {
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
+    email: user?.email || '',
+  };
+
+  const initializePaystack = usePaystackPayment(paystackConfig);
+
   const handleSelectPlan = async (planKey: PlanKey) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'You must be logged in.' });
-        return;
-    }
-    if (planKey === currentPlan) return;
+    if (!user || planKey === currentPlan) return;
     
-    // In a real app, this would trigger a Paystack payment flow.
-    // For this demo, we'll just update the plan in Firestore.
-    
-    const ownerDocRef = doc(db, 'rideOwners', user.uid);
+    setIsProcessingPayment(planKey);
     try {
-        await updateDoc(ownerDocRef, { plan: planKey });
-        toast({
-            title: 'Subscription Updated!',
-            description: `You are now on the ${plans[planKey].name} plan.`,
-        });
-    } catch (error) {
-        console.error("Error updating plan: ", error);
+      const response = await initializePayment(planKey, user.uid);
+      
+      if (response.status && response.data) {
+        const paymentConfig = {
+            ...paystackConfig,
+            amount: plans[planKey].price * 100,
+            reference: response.data.reference,
+            onSuccess: (transaction: any) => {
+                toast({ title: "Payment Successful!", description: `Reference: ${transaction.reference}. Your plan will be updated shortly.`});
+                // We rely on the webhook for activation, but can trigger a client-side verification as a fallback
+                verifyPayment(transaction.reference);
+            },
+            onClose: () => {
+                toast({ variant: 'destructive', title: 'Payment cancelled.' });
+            },
+        };
+        initializePaystack(paymentConfig);
+      } else {
+        throw new Error(response.message || 'Failed to initialize payment.');
+      }
+    } catch (error: any) {
+        console.error("Error initializing payment: ", error);
         toast({
             variant: 'destructive',
-            title: 'Update Failed',
-            description: 'Could not update your subscription plan. Please try again.',
+            title: 'Payment Error',
+            description: error.message || 'Could not start the payment process. Please try again.',
         });
+    } finally {
+        setIsProcessingPayment(null);
     }
   };
 
   const currentPlanDetails = plans[currentPlan];
-  const usagePercentage = currentPlanDetails.listings > 0 ? (listingCount / currentPlanDetails.listings) * 100 : 0;
+  const usagePercentage = currentPlanDetails.listings > 0 && currentPlanDetails.listings !== Infinity 
+    ? (listingCount / currentPlanDetails.listings) * 100 
+    : 0;
 
   if (isLoading || loadingAuth) {
     return (
@@ -143,6 +154,7 @@ export default function SubscriptionPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Object.entries(plans).filter(([key]) => key !== 'None').map(([key, plan]) => {
                 const isCurrent = currentPlan === key;
+                const planKey = key as PlanKey;
                 return (
                     <Card key={key} className={`flex flex-col ${isCurrent ? 'border-primary border-2' : ''}`}>
                         <CardHeader className="text-center">
@@ -163,8 +175,10 @@ export default function SubscriptionPage() {
                            </ul>
                         </CardContent>
                         <CardFooter>
-                            <Button className="w-full" onClick={() => handleSelectPlan(key as PlanKey)} disabled={isCurrent}>
-                                {isCurrent ? 'Current Plan' : plan.cta}
+                            <Button className="w-full" onClick={() => handleSelectPlan(planKey)} disabled={isCurrent || isProcessingPayment !== null}>
+                                {isProcessingPayment === planKey ? (
+                                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Initializing...</>
+                                ) : isCurrent ? 'Current Plan' : plan.cta}
                             </Button>
                         </CardFooter>
                     </Card>
