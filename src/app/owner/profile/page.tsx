@@ -1,10 +1,10 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db, storage } from '@/lib/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc, updateDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,7 +18,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, UploadCloud, User as UserIcon } from 'lucide-react';
+import { Loader2, UploadCloud } from 'lucide-react';
+import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
+import { getPublicIdFromUrl } from '@/lib/utils';
 
 const profileFormSchema = z.object({
   fullName: z.string().min(2, 'Contact person name must be at least 2 characters.'),
@@ -105,10 +107,18 @@ export default function ProfilePage() {
     }
   };
 
-  const uploadImage = async (imageFile: File, userId: string): Promise<string> => {
-    const fileRef = ref(storage, `avatars/${userId}/${imageFile.name}`);
-    await uploadBytes(fileRef, imageFile);
-    return await getDownloadURL(fileRef);
+  const handleCloudinaryUpload = async (imageFile: File, userId: string): Promise<string> => {
+    const arrayBuffer = await imageFile.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64String = buffer.toString('base64');
+    
+    const options = {
+        public_id: `avatars/${userId}/${Date.now()}-${imageFile.name}`,
+        resource_type: 'image' as const,
+    };
+    
+    const result = await uploadToCloudinary(base64String, options);
+    return result.secure_url;
   };
   
   async function onSubmit(values: ProfileFormData) {
@@ -120,18 +130,20 @@ export default function ProfilePage() {
 
       // Handle image upload if a new file is present
       if (values.profilePicture && values.profilePicture instanceof File) {
-        newImageUrl = await uploadImage(values.profilePicture, user.uid);
+        newImageUrl = await handleCloudinaryUpload(values.profilePicture, user.uid);
         
         // Delete old image if it exists
         if (currentAvatarUrl) {
-          try {
-            const oldImageRef = ref(storage, currentAvatarUrl);
-            await deleteObject(oldImageRef);
-          } catch (storageError: any) {
-             if(storageError.code !== 'storage/object-not-found'){
-                console.warn("Could not delete old avatar:", storageError);
+            const publicId = getPublicIdFromUrl(currentAvatarUrl);
+            if (publicId) {
+                try {
+                    await deleteFromCloudinary(publicId);
+                } catch (storageError: any) {
+                    if(storageError.code !== 'storage/object-not-found'){
+                        console.warn("Could not delete old avatar:", storageError);
+                    }
+                }
             }
-          }
         }
       }
 
@@ -153,6 +165,17 @@ export default function ProfilePage() {
           contact: values.email,
         }),
       ]);
+
+      // If business name changed, update all listings
+      if (values.businessName !== initialData?.businessName) {
+        const listingsQuery = query(collection(db, 'listings'), where('ownerId', '==', user.uid));
+        const listingsSnapshot = await getDocs(listingsQuery);
+        const batch = writeBatch(db);
+        listingsSnapshot.forEach(listingDoc => {
+            batch.update(listingDoc.ref, { owner: values.businessName });
+        });
+        await batch.commit();
+      }
       
       setCurrentAvatarUrl(newImageUrl);
       toast({ title: 'Profile Updated Successfully!' });
@@ -343,3 +366,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    

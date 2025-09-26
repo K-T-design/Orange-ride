@@ -30,7 +30,7 @@ async function getFeaturedRides(): Promise<Ride[]> {
               email: ownerContact.email || ''
             }
           },
-          image: data.image || 'sedan-1',
+          image: data.image || `https://picsum.photos/seed/${doc.id}/600/400`,
           isPromoted: data.isPromoted || data.status === 'Promoted' || false,
           schedule: data.schedule || 'Not specified',
           capacity: data.capacity,
@@ -39,32 +39,38 @@ async function getFeaturedRides(): Promise<Ride[]> {
       });
     };
 
+    // Run queries in parallel for better performance
     const promotedQuery = query(
       collection(db, 'listings'),
       where('status', '==', 'Promoted'),
       limit(4)
     );
-    const promotedSnapshot = await getDocs(promotedQuery);
-    let rides = processSnapshot(promotedSnapshot);
+    const recentQuery = query(
+      collection(db, 'listings'),
+      where('status', '==', 'Approved'),
+      orderBy('createdAt', 'desc'),
+      limit(4)
+    );
 
-    if (rides.length < 4) {
-      const needed = 4 - rides.length;
-      const recentQuery = query(
-        collection(db, 'listings'),
-        where('status', '==', 'Approved'),
-        orderBy('createdAt', 'desc'),
-        limit(needed)
-      );
-      const recentSnapshot = await getDocs(recentQuery);
-      
-      const existingIds = new Set(rides.map(r => r.id));
-      const recentRides = processSnapshot(recentSnapshot);
-      const filteredRecentRides = recentRides.filter(r => !existingIds.has(r.id));
-      
-      rides = [...rides, ...filteredRecentRides];
-    }
+    const [promotedSnapshot, recentSnapshot] = await Promise.all([
+        getDocs(promotedQuery),
+        getDocs(recentQuery)
+    ]);
     
-    return rides;
+    const promotedRides = processSnapshot(promotedSnapshot);
+    const recentRides = processSnapshot(recentSnapshot);
+
+    // Combine and de-duplicate, giving priority to promoted rides
+    const ridesMap = new Map<string, Ride>();
+    promotedRides.forEach(ride => ridesMap.set(ride.id, ride));
+    recentRides.forEach(ride => {
+        if (!ridesMap.has(ride.id)) {
+            ridesMap.set(ride.id, ride);
+        }
+    });
+    
+    return Array.from(ridesMap.values()).slice(0, 4);
+
   } catch (error) {
     console.error("Error fetching featured rides: ", error);
     return [];

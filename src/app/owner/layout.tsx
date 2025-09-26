@@ -90,7 +90,7 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
             <span className="font-headline">Orange Rides</span>
           </Link>
           {ownerNavLinks.map((link) => {
-            const isActive = pathname.startsWith(link.href) && (link.href !== '/owner/listings' || pathname === '/owner/listings');
+            const isActive = pathname === link.href;
             return (
               <Link key={link.label} href={link.href}>
                 <Button

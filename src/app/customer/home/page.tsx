@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, getDocs, onSnapshot, DocumentData, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, DocumentData, deleteDoc, doc, orderBy, limit } from 'firebase/firestore';
 import { RideCard } from '@/components/ride-card';
 import type { Ride } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,23 +40,73 @@ export default function CustomerDashboardPage() {
 
   useEffect(() => {
     if (user) {
+      const processRides = (docs: DocumentData[]): Ride[] => {
+        return docs.map((doc) => {
+            const data = doc.data();
+            const ownerContact = data.contact || {};
+            return {
+                id: doc.id,
+                name: data.name || 'Unnamed Ride',
+                type: data.type || 'Car',
+                price: data.price || 0,
+                pickup: data.pickup || 'N/A',
+                destination: data.destination || 'N/A',
+                owner: {
+                    name: data.owner || 'Information unavailable',
+                    contact: {
+                        phone: ownerContact.phone || '',
+                        whatsapp: ownerContact.whatsapp || '',
+                        email: ownerContact.email || ''
+                    }
+                },
+                image: data.image || 'https://picsum.photos/seed/placeholder/600/400',
+                isPromoted: data.isPromoted || data.status === 'Promoted' || false,
+                schedule: data.schedule || 'Not specified',
+                capacity: data.capacity,
+                description: data.description,
+            } as Ride;
+        });
+      };
+
       // Fetch Saved Rides
-      const savedRidesQuery = query(collection(db, 'savedRides'), where('userId', '==', user.uid));
+      let savedRidesQuery;
+      const baseSavedQuery = query(collection(db, 'savedRides'), where('userId', '==', user.uid));
+      
+      switch(sortOrder) {
+          case 'price_asc':
+              savedRidesQuery = query(baseSavedQuery, orderBy('listingPrice', 'asc'));
+              break;
+          case 'price_desc':
+              savedRidesQuery = query(baseSavedQuery, orderBy('listingPrice', 'desc'));
+              break;
+          case 'type_asc':
+              savedRidesQuery = query(baseSavedQuery, orderBy('listingType', 'asc'));
+              break;
+          case 'savedAt_desc':
+          default:
+              savedRidesQuery = query(baseSavedQuery, orderBy('savedAt', 'desc'));
+              break;
+      }
+      
       const unsubscribeSaved = onSnapshot(savedRidesQuery, async (snapshot) => {
         const savedRideIds = snapshot.docs.map(doc => doc.data().listingId);
         
         if (savedRideIds.length > 0) {
-          const listingsQuery = query(collection(db, 'listings'), where('__name__', 'in', savedRideIds));
-          const listingsSnapshot = await getDocs(listingsQuery);
-          const ridesData = listingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
+          // Firestore 'in' queries are limited to 30 elements. For larger lists, chunk the requests.
+          const CHUNK_SIZE = 30;
+          const rideChunks: Ride[] = [];
+          for (let i = 0; i < savedRideIds.length; i += CHUNK_SIZE) {
+              const chunkIds = savedRideIds.slice(i, i + CHUNK_SIZE);
+              const listingsQuery = query(collection(db, 'listings'), where('__name__', 'in', chunkIds));
+              const listingsSnapshot = await getDocs(listingsQuery);
+              const ridesData = processRides(listingsSnapshot.docs);
+              rideChunks.push(...ridesData);
+          }
           
-          // Attach savedAt timestamp
-          const ridesWithTimestamp = ridesData.map(ride => {
-              const savedDoc = snapshot.docs.find(doc => doc.data().listingId === ride.id);
-              return {...ride, savedAt: savedDoc?.data().savedAt };
-          });
+          // Re-order based on the original sorted list of IDs from savedRides query
+          const orderedRides = savedRideIds.map(id => rideChunks.find(ride => ride.id === id)).filter(Boolean) as Ride[];
 
-          setSavedRides(ridesWithTimestamp);
+          setSavedRides(orderedRides);
         } else {
             setSavedRides([]);
         }
@@ -68,9 +118,9 @@ export default function CustomerDashboardPage() {
       });
 
       // Fetch Promoted Rides
-      const promotedQuery = query(collection(db, 'listings'), where('isPromoted', '==', true));
+      const promotedQuery = query(collection(db, 'listings'), where('isPromoted', '==', true), limit(4));
       const unsubscribePromoted = onSnapshot(promotedQuery, (snapshot) => {
-        const promotedData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
+        const promotedData = processRides(snapshot.docs);
         setPromotedRides(promotedData);
       });
 
@@ -80,7 +130,7 @@ export default function CustomerDashboardPage() {
         unsubscribePromoted();
       };
     }
-  }, [user, toast]);
+  }, [user, toast, sortOrder]);
   
   const handleRemoveSaved = async (listingId: string) => {
       if (!user) return;
@@ -99,31 +149,17 @@ export default function CustomerDashboardPage() {
       }
   }
 
-  const sortedSavedRides = [...savedRides].sort((a, b) => {
-    switch (sortOrder) {
-      case 'price_asc':
-        return a.price - b.price;
-      case 'price_desc':
-        return b.price - a.price;
-      case 'type_asc':
-        return a.type.localeCompare(b.type);
-      case 'savedAt_desc':
-      default:
-        return (b.savedAt?.toMillis() || 0) - (a.savedAt?.toMillis() || 0);
-    }
-  });
-
 
   if (loadingAuth || isLoading) {
       return (
           <div className="container mx-auto px-4 py-8 space-y-8">
               <Skeleton className="h-10 w-1/3" />
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-40" />)}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-40" />)}
               </div>
               <div className="space-y-4">
                   <Skeleton className="h-8 w-1/4" />
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                       {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-80" />)}
                   </div>
               </div>
@@ -172,7 +208,7 @@ export default function CustomerDashboardPage() {
              <CardContent>
                <p className="text-xs text-muted-foreground">Explore and book your next journey.</p>
                 <Button variant="default" size="sm" className="mt-4" asChild>
-                   <Link href="/">Back to Homepage</Link>
+                   <Link href="/search">Find New Rides</Link>
                </Button>
              </CardContent>
            </Card>
@@ -188,17 +224,17 @@ export default function CustomerDashboardPage() {
                             <SelectValue placeholder="Sort rides" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="savedAt_desc">Date Saved</SelectItem>
+                            <SelectItem value="savedAt_desc">Recently Added</SelectItem>
                             <SelectItem value="price_asc">Price: Low to High</SelectItem>
                             <SelectItem value="price_desc">Price: High to Low</SelectItem>
-                            <SelectItem value="type_asc">Ride Type</SelectItem>
+                            <SelectItem value="type_asc">Ride Type (A-Z)</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
             </div>
             {savedRides.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {sortedSavedRides.map(ride => (
+                    {savedRides.map(ride => (
                        <div key={ride.id} className="relative group">
                          <RideCard ride={ride} />
                          <Button 

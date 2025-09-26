@@ -4,9 +4,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db, storage } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { ListingForm } from '@/components/owner/listing-form';
 import type { ListingFormData } from '@/components/owner/listing-form';
@@ -14,6 +13,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
+import { getPublicIdFromUrl } from '@/lib/utils';
 
 type ListingData = ListingFormData & { image: string | File };
 
@@ -67,10 +68,18 @@ export default function EditListingPage() {
         fetchListing();
     }, [user, listingId, router, toast]);
 
-    const uploadImage = async (imageFile: File, userId: string): Promise<string> => {
-        const fileRef = ref(storage, `listings/${userId}/${Date.now()}-${imageFile.name}`);
-        await uploadBytes(fileRef, imageFile);
-        return await getDownloadURL(fileRef);
+    const handleCloudinaryUpload = async (imageFile: File, userId: string): Promise<string> => {
+        const arrayBuffer = await imageFile.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const base64String = buffer.toString('base64');
+        
+        const options = {
+            public_id: `listings/${userId}/${Date.now()}-${imageFile.name}`,
+            resource_type: 'image' as const,
+        };
+        
+        const result = await uploadToCloudinary(base64String, options);
+        return result.secure_url;
     };
 
     async function handleUpdateListing(values: ListingFormData) {
@@ -82,16 +91,16 @@ export default function EditListingPage() {
             
             // If a new image file is provided, upload it and delete the old one
             if (values.image instanceof File) {
-                imageUrl = await uploadImage(values.image, user.uid);
+                imageUrl = await handleCloudinaryUpload(values.image, user.uid);
                 
                 // Delete the old image from storage if it exists
                 if (initialData.image && typeof initialData.image === 'string') {
-                    try {
-                        const oldImageRef = ref(storage, initialData.image);
-                        await deleteObject(oldImageRef);
-                    } catch (storageError: any) {
-                        // Log if deletion fails but don't block the update
-                        if(storageError.code !== 'storage/object-not-found'){
+                    const publicId = getPublicIdFromUrl(initialData.image);
+                    if (publicId) {
+                        try {
+                           await deleteFromCloudinary(publicId);
+                        } catch (storageError: any) {
+                            // Log if deletion fails but don't block the update
                             console.warn("Could not delete old image:", storageError);
                         }
                     }

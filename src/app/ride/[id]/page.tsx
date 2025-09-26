@@ -21,39 +21,17 @@ async function getRideDetails(rideId: string): Promise<Ride | null> {
         }
 
         const listingData = listingSnap.data() as DocumentData;
-        let ownerData: Ride['owner'] | null = null;
+        let ownerContact = listingData.contact || { phone: '', whatsapp: '', email: '' };
 
-        // Safely resolve owner information
+        // If ownerId exists, fetch owner's document for the most up-to-date contact info
         if (listingData.ownerId) {
             const ownerRef = doc(db, 'rideOwners', listingData.ownerId);
             const ownerSnap = await getDoc(ownerRef);
             if (ownerSnap.exists()) {
                 const ownerDocData = ownerSnap.data();
-                 ownerData = {
-                    name: ownerDocData.name || 'Owner Name Unavailable',
-                    contact: {
-                        phone: ownerDocData.contact || '',
-                        whatsapp: ownerDocData.whatsapp || '',
-                        email: ownerDocData.email || ''
-                    }
-                };
-            }
-        } 
-        
-        // Fallback if ownerId is not present or owner doc doesn't exist
-        if (!ownerData) {
-            if (typeof listingData.owner === 'string') {
-                 ownerData = {
-                    name: listingData.owner,
-                    contact: listingData.contact || { phone: '', whatsapp: '', email: '' }
-                };
-            } else if (typeof listingData.owner === 'object' && listingData.owner !== null) {
-                ownerData = listingData.owner;
-            } else {
-                 ownerData = {
-                    name: 'Information unavailable',
-                    contact: { phone: '', whatsapp: '', email: '' }
-                };
+                // Override listing contact with owner's primary contact if available
+                ownerContact.phone = ownerDocData.contact || ownerContact.phone;
+                ownerContact.email = ownerDocData.email || ownerContact.email;
             }
         }
 
@@ -64,8 +42,11 @@ async function getRideDetails(rideId: string): Promise<Ride | null> {
             price: listingData.price || 0,
             pickup: listingData.pickup || 'N/A',
             destination: listingData.destination || 'N/A',
-            owner: ownerData,
-            image: listingData.image || 'sedan-1',
+            owner: {
+                name: listingData.owner || 'Information unavailable',
+                contact: ownerContact,
+            },
+            image: listingData.image || '',
             isPromoted: listingData.isPromoted || false,
             schedule: listingData.schedule || 'Not specified',
             capacity: listingData.capacity,

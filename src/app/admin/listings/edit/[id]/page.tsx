@@ -13,10 +13,14 @@ import { ListingForm } from '@/components/admin/listing-form';
 import type { ListingFormData } from '@/components/admin/listing-form';
 import { Skeleton } from '@/components/ui/skeleton';
 import { planLimits } from '@/lib/data';
+import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
+import { getPublicIdFromUrl } from '@/lib/utils';
+
+type InitialListingData = ListingFormData & { image: string };
 
 export default function EditListingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [initialData, setInitialData] = useState<ListingFormData | null>(null);
+  const [initialData, setInitialData] = useState<InitialListingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const params = useParams();
@@ -49,7 +53,8 @@ export default function EditListingPage() {
                 companyName: data.ownerId ? '' : data.owner,
                 description: data.description || '',
                 altContact: data.altContact || '',
-                image: data.image || null, // You might need to handle image URL fetching differently
+                image: data.image || '',
+                bypassLimit: false,
             });
 
         } else {
@@ -68,14 +73,24 @@ export default function EditListingPage() {
   }, [listingId, router, toast]);
 
   async function handleUpdateListing(values: ListingFormData) {
+    if (!initialData) return;
     setIsSubmitting(true);
     try {
-      // If owner is changed, check their subscription limit
-      if (values.ownerId && values.ownerId !== initialData?.ownerId) {
+      let ownerName = values.companyName || 'Admin';
+
+      // If owner is changed, check their subscription limit unless bypassed
+      if (values.ownerId && values.ownerId !== initialData?.ownerId && !values.bypassLimit) {
         const ownerId = values.ownerId;
         const ownerRef = doc(db, 'rideOwners', ownerId);
         const ownerSnap = await getDoc(ownerRef);
-        const ownerName = ownerSnap.exists() ? ownerSnap.data().name : 'Unknown Owner';
+        
+        if (!ownerSnap.exists()) {
+            toast({ variant: 'destructive', title: 'Selected owner not found.' });
+            setIsSubmitting(false);
+            return;
+        }
+        
+        ownerName = ownerSnap.data().name || 'Unknown Owner';
 
         const subQuery = query(collection(db, 'subscriptions'), where('ownerId', '==', ownerId));
         const subSnapshot = await getDocs(subQuery);
@@ -84,7 +99,7 @@ export default function EditListingPage() {
           toast({
             variant: 'destructive',
             title: 'Action Blocked',
-            description: `${ownerName} does not have an active subscription.`,
+            description: `${ownerName} does not have an active subscription. Use bypass to proceed.`,
           });
           setIsSubmitting(false);
           return;
@@ -103,16 +118,45 @@ export default function EditListingPage() {
             toast({
               variant: 'destructive',
               title: 'Listing Limit Reached',
-              description: `${ownerName} has reached the maximum of ${limit} listings for their ${plan} plan.`,
+              description: `${ownerName} has reached the maximum of ${limit} listings for their ${plan} plan. Use bypass to proceed.`,
             });
             setIsSubmitting(false);
             return;
           }
         }
+      } else if (values.ownerId) {
+          const ownerRef = doc(db, 'rideOwners', values.ownerId);
+          const ownerSnap = await getDoc(ownerRef);
+          if (ownerSnap.exists()) {
+              ownerName = ownerSnap.data().name || 'Unknown Owner';
+          }
       }
       
+      let imageUrl = initialData.image;
+      if (values.image instanceof File) {
+        const imageFile = values.image;
+        const arrayBuffer = await imageFile.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const base64String = buffer.toString('base64');
+        const uploadResult = await uploadToCloudinary(base64String, {
+          public_id: `listings/admin/${Date.now()}-${imageFile.name}`,
+          resource_type: 'image',
+        });
+        imageUrl = uploadResult.secure_url;
+        
+        // Delete old image
+        const oldPublicId = getPublicIdFromUrl(initialData.image);
+        if (oldPublicId) {
+          try {
+            await deleteFromCloudinary(oldPublicId);
+          } catch(e) {
+            console.warn("Failed to delete old image, it might have already been removed:", e);
+          }
+        }
+      }
+
       const listingRef = doc(db, 'listings', listingId);
-      
+
       await updateDoc(listingRef, {
         name: values.name,
         type: values.type,
@@ -124,10 +168,10 @@ export default function EditListingPage() {
         capacity: values.capacity,
         model: `${values.name} ${values.modelYear}`,
         ownerId: values.ownerId || null,
-        owner: values.ownerId ? (await getDoc(doc(db, 'rideOwners', values.ownerId))).data()?.name : values.companyName || 'Admin',
+        owner: ownerName,
         description: values.description,
         altContact: values.altContact,
-        // Image update logic would go here
+        image: imageUrl,
         lastEditedAt: serverTimestamp(),
       });
 

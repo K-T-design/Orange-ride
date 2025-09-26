@@ -15,6 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { deleteFromCloudinary } from "@/lib/cloudinary";
+import { getPublicIdFromUrl } from "@/lib/utils";
 
 type Listing = {
     id: string;
@@ -23,6 +25,7 @@ type Listing = {
     price: number;
     owner: string;
     status: 'Pending' | 'Approved' | 'Promoted' | 'Expired';
+    image?: string;
 }
 
 const getStatusVariant = (status: string) => {
@@ -69,9 +72,17 @@ export default function ManageListingsPage() {
         }
     };
 
-    const handleDeleteListing = async (listingId: string) => {
-        const listingRef = doc(db, 'listings', listingId);
+    const handleDeleteListing = async (listing: Listing) => {
+        const listingRef = doc(db, 'listings', listing.id);
         try {
+            // Delete image from Cloudinary first
+            if (listing.image) {
+                const publicId = getPublicIdFromUrl(listing.image);
+                if (publicId) {
+                    await deleteFromCloudinary(publicId);
+                }
+            }
+            // Then delete the Firestore document
             await deleteDoc(listingRef);
             toast({
                 title: "Listing Deleted",
@@ -180,7 +191,7 @@ export default function ManageListingsPage() {
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
                                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDeleteListing(listing.id)} className="bg-destructive hover:bg-destructive/90">
+                                                    <AlertDialogAction onClick={() => handleDeleteListing(listing)} className="bg-destructive hover:bg-destructive/90">
                                                         Yes, delete listing
                                                     </AlertDialogAction>
                                                 </AlertDialogFooter>

@@ -4,9 +4,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db, storage } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { ListingForm } from '@/components/owner/listing-form';
 import type { ListingFormData } from '@/components/owner/listing-form';
@@ -16,6 +15,7 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 type OwnerInfo = {
   businessName: string;
@@ -72,11 +72,18 @@ export default function AddListingPage() {
     }
   }, [user, loadingAuth, toast]);
 
-  const uploadImage = async (imageFile: File, userId: string): Promise<string> => {
-    const fileRef = ref(storage, `listings/${userId}/${Date.now()}-${imageFile.name}`);
-    await uploadBytes(fileRef, imageFile);
-    const downloadURL = await getDownloadURL(fileRef);
-    return downloadURL;
+  const handleCloudinaryUpload = async (imageFile: File, userId: string): Promise<string> => {
+    const arrayBuffer = await imageFile.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64String = buffer.toString('base64');
+    
+    const options = {
+        public_id: `listings/${userId}/${Date.now()}-${imageFile.name}`,
+        resource_type: 'image' as const,
+    };
+    
+    const result = await uploadToCloudinary(base64String, options);
+    return result.secure_url;
   };
 
   async function handleAddListing(values: ListingFormData) {
@@ -104,8 +111,8 @@ export default function AddListingPage() {
         return;
       }
 
-      // 1. Upload image to Firebase Storage
-      const imageUrl = await uploadImage(values.image, user.uid);
+      // 1. Upload image to Cloudinary
+      const imageUrl = await handleCloudinaryUpload(values.image, user.uid);
 
       // 2. Check for 80% warning
       if (limit !== Infinity) {
@@ -144,7 +151,7 @@ export default function AddListingPage() {
         status: 'Pending',
         postedBy: 'owner',
         isPromoted: false,
-        image: imageUrl,
+        image: imageUrl, // Save Cloudinary URL
         createdAt: serverTimestamp(),
       });
 

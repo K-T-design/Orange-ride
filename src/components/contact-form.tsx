@@ -12,10 +12,10 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { Loader2, Paperclip, Send } from 'lucide-react';
 import { X } from 'lucide-react';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 
 const contactSchema = z.object({
@@ -63,9 +63,15 @@ export function ContactForm() {
         try {
             let attachmentURL: string | null = null;
             if (data.attachment instanceof File) {
-                const fileRef = ref(storage, `contact-attachments/${Date.now()}_${data.attachment.name}`);
-                await uploadBytes(fileRef, data.attachment);
-                attachmentURL = await getDownloadURL(fileRef);
+                 const arrayBuffer = await data.attachment.arrayBuffer();
+                 const buffer = Buffer.from(arrayBuffer);
+                 const base64String = buffer.toString('base64');
+                 
+                 const result = await uploadToCloudinary(base64String, {
+                    public_id: `contact-attachments/${Date.now()}_${data.attachment.name}`,
+                    resource_type: 'auto'
+                 });
+                 attachmentURL = result.secure_url;
             }
             
             await addDoc(collection(db, 'contactMessages'), {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,6 +15,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { NIGERIAN_CITIES, rideOwners as mockRideOwners, vehicleTypes } from '@/lib/data';
 import { Upload, X } from 'lucide-react';
 import Image from 'next/image';
+import { Checkbox } from '../ui/checkbox';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 
 const formSchema = z.object({
   name: z.string().min(3, 'Vehicle name must be at least 3 characters.'),
@@ -29,7 +34,14 @@ const formSchema = z.object({
   companyName: z.string().optional(),
   description: z.string().optional(),
   altContact: z.string().optional(),
-  image: z.any().refine((file) => file, 'Vehicle image is required.'),
+  image: z.any()
+    .refine((file) => file, 'Vehicle image is required.')
+    .refine((file) => typeof file === 'string' || file?.size <= MAX_FILE_SIZE, `Max image size is 5MB.`)
+    .refine(
+      (file) => typeof file === 'string' || ACCEPTED_IMAGE_TYPES.includes(file?.type),
+      "Only .jpg, .jpeg, and .png formats are supported."
+    ),
+  bypassLimit: z.boolean().optional(),
 });
 
 export type ListingFormData = z.infer<typeof formSchema>;
@@ -53,16 +65,21 @@ export function ListingForm({ onSubmit, isSubmitting, initialData, submitButtonT
       location: '',
       price: 0,
       phone: '',
+      whatsapp: '',
       schedule: '',
       capacity: 1,
       modelYear: '',
+      ownerId: '',
+      companyName: '',
+      description: '',
+      altContact: '',
+      bypassLimit: false,
     },
   });
 
   useEffect(() => {
     if (initialData) {
         form.reset(initialData);
-        // Assuming `initialData.image` is a URL for the preview
         if (typeof initialData.image === 'string') {
             setImagePreview(initialData.image);
         }
@@ -72,7 +89,7 @@ export function ListingForm({ onSubmit, isSubmitting, initialData, submitButtonT
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      form.setValue('image', file);
+      form.setValue('image', file, { shouldValidate: true });
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
@@ -82,9 +99,11 @@ export function ListingForm({ onSubmit, isSubmitting, initialData, submitButtonT
   };
   
   const removeImage = () => {
-      form.setValue('image', null);
+      form.setValue('image', null, { shouldValidate: true });
       setImagePreview(null);
   }
+
+  const ownerId = form.watch('ownerId');
 
   return (
     <Form {...form}>
@@ -240,7 +259,7 @@ export function ListingForm({ onSubmit, isSubmitting, initialData, submitButtonT
                             <FormField
                                 control={form.control}
                                 name="image"
-                                render={({ field }) => (
+                                render={() => (
                                     <FormItem>
                                         <FormLabel className="sr-only">Vehicle Photo</FormLabel>
                                         <FormControl>
@@ -257,7 +276,7 @@ export function ListingForm({ onSubmit, isSubmitting, initialData, submitButtonT
                                                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                                             <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
                                                             <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span></p>
-                                                            <p className="text-xs text-muted-foreground">PNG, JPG or GIF</p>
+                                                            <p className="text-xs text-muted-foreground">PNG, JPG, or JPEG (MAX 5MB)</p>
                                                         </div>
                                                     )}
                                                 </label>
@@ -313,11 +332,33 @@ export function ListingForm({ onSubmit, isSubmitting, initialData, submitButtonT
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Company Name (if no owner is assigned)</FormLabel>
-                                        <FormControl><Input placeholder="e.g., Admin Rides Co." {...field} /></FormControl>
+                                        <FormControl><Input placeholder="e.g., Admin Rides Co." {...field} disabled={!!ownerId} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
+                             {ownerId && <FormField
+                                control={form.control}
+                                name="bypassLimit"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                        <FormControl>
+                                            <Checkbox
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                            <FormLabel>
+                                                Bypass subscription limit
+                                            </FormLabel>
+                                            <FormDescription>
+                                                Force add this listing even if the owner is over their plan limit.
+                                            </FormDescription>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />}
                         </CardContent>
                     </Card>
                 </div>
@@ -333,3 +374,5 @@ export function ListingForm({ onSubmit, isSubmitting, initialData, submitButtonT
     </Form>
   );
 }
+
+    

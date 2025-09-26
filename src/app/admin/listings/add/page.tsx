@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { ListingForm } from '@/components/admin/listing-form';
 import type { ListingFormData } from '@/components/admin/listing-form';
 import { rideOwners, planLimits } from '@/lib/data'; // Assuming rideOwners and planLimits are in data
 import { useState } from 'react';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 
 export default function AddListingPage() {
@@ -22,10 +23,26 @@ export default function AddListingPage() {
   async function handleAddListing(values: ListingFormData) {
     setIsSubmitting(true);
     try {
-        // If an owner is selected, check their subscription limit
-        if (values.ownerId) {
+        let ownerName = values.companyName || 'Admin';
+
+        // If an owner is selected, check their subscription limit (unless bypassed)
+        if (values.ownerId && !values.bypassLimit) {
             const ownerId = values.ownerId;
-            const selectedOwner = rideOwners.find(o => o.id === ownerId);
+            
+            const ownerRef = doc(db, 'rideOwners', ownerId);
+            const ownerSnap = await getDoc(ownerRef);
+
+            if (!ownerSnap.exists()) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Owner not found',
+                    description: 'The selected owner does not exist.',
+                });
+                setIsSubmitting(false);
+                return;
+            }
+            
+            ownerName = ownerSnap.data().name || 'Unknown Owner';
 
             // 1. Find the owner's subscription
             const subQuery = query(collection(db, 'subscriptions'), where('ownerId', '==', ownerId));
@@ -74,7 +91,7 @@ export default function AddListingPage() {
 
                  // 3. Enforce the limit
                 if (currentListingsCount >= limit) {
-                    const errorMsg = `This owner has reached the maximum of ${limit} listings for their ${plan} plan. Please upgrade their plan to add more.`;
+                    const errorMsg = `This owner has reached the maximum of ${limit} listings for their ${plan} plan. Please upgrade their plan or use the bypass option to add more.`;
                     toast({
                         variant: 'destructive',
                         title: 'Listing Limit Reached',
@@ -83,8 +100,8 @@ export default function AddListingPage() {
                     
                     // Create a notification for the admin
                     await addDoc(collection(db, 'notifications'), {
-                        message: `Listing limit reached for ${selectedOwner?.name} on ${plan} plan.`,
-                        ownerName: selectedOwner?.name,
+                        message: `Attempted to exceed listing limit for ${ownerName} on ${plan} plan.`,
+                        ownerName: ownerName,
                         plan: plan,
                         eventType: 'limit_reached',
                         createdAt: serverTimestamp(),
@@ -99,8 +116,8 @@ export default function AddListingPage() {
                 const usagePercentage = (currentListingsCount + 1) / limit;
                 if (usagePercentage >= 0.8) {
                      await addDoc(collection(db, 'notifications'), {
-                        message: `${selectedOwner?.name} is at ${Math.round(usagePercentage * 100)}% of their listing limit.`,
-                        ownerName: selectedOwner?.name,
+                        message: `${ownerName} is at ${Math.round(usagePercentage * 100)}% of their listing limit.`,
+                        ownerName: ownerName,
                         plan: plan,
                         eventType: 'limit_warning',
                         createdAt: serverTimestamp(),
@@ -108,13 +125,25 @@ export default function AddListingPage() {
                     });
                 }
             }
+        } else if (values.ownerId) {
+             const ownerRef = doc(db, 'rideOwners', values.ownerId);
+             const ownerSnap = await getDoc(ownerRef);
+             if (ownerSnap.exists()) {
+                ownerName = ownerSnap.data().name || 'Unknown Owner';
+             }
         }
 
 
-      // NOTE: In a real app, you'd upload the image to Firebase Storage first
-      // and get the download URL. For this demo, we are skipping the upload.
-      // const imageUrl = await uploadImage(values.image);
-      const selectedOwner = rideOwners.find(o => o.id === values.ownerId);
+      // Upload image to Cloudinary
+      const imageFile = values.image as File;
+      const arrayBuffer = await imageFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const base64String = buffer.toString('base64');
+      const uploadResult = await uploadToCloudinary(base64String, {
+        public_id: `listings/admin/${Date.now()}-${imageFile.name}`,
+        resource_type: 'image',
+      });
+      const imageUrl = uploadResult.secure_url;
 
       await addDoc(collection(db, 'listings'), {
         name: values.name,
@@ -122,7 +151,7 @@ export default function AddListingPage() {
         pickup: values.location,
         destination: '', // Admin-added listings might not have a fixed destination
         price: values.price,
-        owner: selectedOwner?.name || values.companyName || 'Admin',
+        owner: ownerName,
         ownerId: values.ownerId || null,
         model: `${values.name} ${values.modelYear}`,
         contact: {
@@ -133,7 +162,7 @@ export default function AddListingPage() {
         capacity: values.capacity,
         description: values.description,
         altContact: values.altContact,
-        image: 'sedan-1', // Placeholder
+        image: imageUrl, // Use Cloudinary URL
         isPromoted: false,
         status: 'Approved', // Admin-added listings are pre-approved
         postedBy: 'admin',

@@ -8,7 +8,6 @@ import { db, auth } from '@/lib/firebase';
 import Image from 'next/image';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import type { Ride } from '@/lib/types';
-import { placeholderImages } from '@/lib/placeholder-images';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -16,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WhatsAppIcon } from '@/components/icons/whatsapp-icon';
-import { Calendar, Car, Mail, Phone, Star, Users, ArrowLeft } from 'lucide-react';
+import { Calendar, Car, Mail, Phone, Star, Users, ArrowLeft, MapPin } from 'lucide-react';
 import Link from 'next/link';
 
 export function RideDetailsClient({ ride }: { ride: Ride }) {
@@ -24,6 +23,9 @@ export function RideDetailsClient({ ride }: { ride: Ride }) {
   const [user] = useAuthState(auth);
   const { toast } = useToast();
   const rideId = ride.id;
+  
+  const defaultImage = "https://picsum.photos/seed/placeholder/600/400";
+
 
   useEffect(() => {
       if (!user || !rideId) return;
@@ -68,8 +70,6 @@ export function RideDetailsClient({ ride }: { ride: Ride }) {
     }
   };
   
-  const image = placeholderImages.find(p => p.id === ride.image);
-
   return (
     <div className="container mx-auto max-w-5xl px-4 py-8">
         <div className="mb-6">
@@ -81,17 +81,15 @@ export function RideDetailsClient({ ride }: { ride: Ride }) {
         </div>
         <div className="grid md:grid-cols-2 gap-8">
             <div>
-                 <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg shadow-lg">
-                    {image && (
+                 <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg shadow-lg bg-muted">
                       <Image
-                        src={image.imageUrl}
+                        src={ride.image || defaultImage}
                         alt={ride.name}
                         fill
                         className="object-cover"
                         sizes="(max-width: 768px) 100vw, 50vw"
                         priority
                       />
-                    )}
                      {ride.isPromoted && (
                       <Badge className="absolute top-4 left-4 z-10 bg-primary">Promoted</Badge>
                     )}
@@ -111,7 +109,8 @@ export function RideDetailsClient({ ride }: { ride: Ride }) {
                     <CardContent className="space-y-3 text-sm">
                         <div className="flex items-center gap-3"><Users className="h-5 w-5 text-muted-foreground" /> <span>{ride.capacity || 'N/A'} Seats</span></div>
                         <div className="flex items-center gap-3"><Calendar className="h-5 w-5 text-muted-foreground" /> <span>{ride.schedule}</span></div>
-                        <div className="flex items-center gap-3"><Car className="h-5 w-5 text-muted-foreground" /> <span>Pickup: {ride.pickup}</span></div>
+                        <div className="flex items-center gap-3"><MapPin className="h-5 w-5 text-muted-foreground" /> <span>Pickup: {ride.pickup}</span></div>
+                        {ride.destination && <div className="flex items-center gap-3"><MapPin className="h-5 w-5 text-primary" /> <span>Destination: {ride.destination}</span></div>}
                     </CardContent>
                 </Card>
 

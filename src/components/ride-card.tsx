@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Mail, Phone, Calendar as CalendarIcon, Star } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/icons/whatsapp-icon';
-import { placeholderImages } from '@/lib/placeholder-images';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +17,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, addDoc, deleteDoc, query, where, getDocs, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, query, where, getDocs, serverTimestamp, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
@@ -27,10 +26,11 @@ type RideCardProps = {
 };
 
 export function RideCard({ ride }: RideCardProps) {
-  const image = placeholderImages.find(p => p.id === ride.image);
   const [user] = useAuthState(auth);
   const { toast } = useToast();
   const [isSaved, setIsSaved] = useState(false);
+  
+  const defaultImage = "https://picsum.photos/seed/placeholder/600/400";
 
   useEffect(() => {
       if (!user) return;
@@ -57,10 +57,22 @@ export function RideCard({ ride }: RideCardProps) {
         const querySnapshot = await getDocs(savedRideQuery);
 
         if (querySnapshot.empty) { // Not saved, so save it
+            // We need to fetch the listing to store some data for server-side sorting
+            const listingRef = doc(db, 'listings', ride.id);
+            const listingSnap = await getDoc(listingRef);
+            if (!listingSnap.exists()) {
+                toast({ variant: 'destructive', title: 'Ride not found' });
+                return;
+            }
+            const listingData = listingSnap.data();
+
             await addDoc(collection(db, 'savedRides'), {
                 userId: user.uid,
                 listingId: ride.id,
                 savedAt: serverTimestamp(),
+                // Denormalized data for sorting
+                listingPrice: listingData.price,
+                listingType: listingData.type,
             });
             toast({ title: 'Ride Saved!', description: `${ride.name} has been added to your favorites.` });
         } else { // Already saved, so unsave it
@@ -94,18 +106,15 @@ export function RideCard({ ride }: RideCardProps) {
             >
                 <Star className={`h-5 w-5 transition-colors ${isSaved ? 'fill-yellow-400 text-yellow-400' : 'fill-transparent'}`} />
             </Button>
-            {image && (
-              <div className="aspect-[3/2] w-full relative">
-                <Image
-                    src={image.imageUrl}
-                    alt={image.description || ride.name}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    data-ai-hint={image.imageHint}
-                />
-              </div>
-            )}
+            <div className="aspect-[3/2] w-full relative bg-muted">
+              <Image
+                  src={ride.image || defaultImage}
+                  alt={ride.name}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              />
+            </div>
           </CardHeader>
           <CardContent className="p-4 flex-grow">
             <div className="flex justify-between items-start">
