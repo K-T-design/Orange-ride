@@ -45,7 +45,7 @@ export async function initializePayment(plan: PlanKey, userId: string): Promise<
             },
             body: JSON.stringify({
                 email: userEmail,
-                plan: planDetails.code, // Use the plan code to define amount and interval
+                plan: planDetails.code,
                 metadata: {
                     user_id: userId,
                     plan: plan,
@@ -64,8 +64,7 @@ export async function initializePayment(plan: PlanKey, userId: string): Promise<
         return data;
 
     } catch (error) {
-        console.error('Payment initialization failed:', error);
-        // In a real app, you'd want more robust error logging here
+        console.error('Detailed Paystack API Error:', error); // Better logging
         throw new Error('Failed to initialize payment with Paystack.');
     }
 }
