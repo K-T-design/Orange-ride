@@ -1,9 +1,27 @@
+
 'use server';
 
 import { plans } from '@/lib/data';
 import type { PlanKey } from '@/lib/types';
 import { db } from './firebase';
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, Timestamp, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+
+
+// Helper to create admin notifications
+async function createNotification(message: string, eventType: string, ownerName?: string, plan?: string) {
+    try {
+        await addDoc(collection(db, 'notifications'), {
+            message,
+            ownerName: ownerName || 'System',
+            plan: plan || 'N/A',
+            eventType,
+            createdAt: serverTimestamp(),
+            read: false
+        });
+    } catch (error) {
+        console.error("Failed to create notification:", error);
+    }
+};
 
 /**
  * Verifies a Paystack transaction.
@@ -13,6 +31,7 @@ import { collection, query, where, getDocs, doc, setDoc, updateDoc, Timestamp, a
 export async function verifyPayment(reference: string) {
   const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
   if (!PAYSTACK_SECRET_KEY) {
+    console.error('Paystack secret key is not configured.');
     return { status: 'error', message: 'Payment gateway is not configured.' };
   }
 
@@ -25,8 +44,8 @@ export async function verifyPayment(reference: string) {
 
     const data = await response.json();
 
-    if (data.data.status === 'success') {
-      const planKey = data.data.metadata.plan_key as PlanKey;
+    if (data.data && data.data.status === 'success') {
+      const planKey = data.data.metadata.plan as PlanKey;
       const userId = data.data.metadata.user_id;
 
       // Security check: Verify amount paid matches the plan
@@ -44,7 +63,7 @@ export async function verifyPayment(reference: string) {
       await activateSubscription(userId, planKey, reference);
       return { status: 'success', message: 'Payment verified and subscription activated.' };
     } else {
-      return { status: 'error', message: `Payment not successful. Status: ${data.data.status}` };
+      return { status: 'error', message: `Payment not successful. Status: ${data.data.status || 'unknown'}` };
     }
   } catch (error) {
     console.error('Error verifying payment:', error);
@@ -70,35 +89,30 @@ export async function activateSubscription(userId: string, planKey: PlanKey, ref
     const ownerName = ownerDoc.data().name;
     const now = new Date();
     const plan = plans[planKey];
-    let expiryDate = new Date(now);
+    let expiryDate: Date | null = new Date(now);
 
-    if (plan.name === 'Weekly') expiryDate.setDate(now.getDate() + 7);
-    if (plan.name === 'Monthly') expiryDate.setMonth(now.getMonth() + 1);
-    if (plan.name === 'Yearly') expiryDate.setFullYear(now.getFullYear() + 1);
-
+    if (plan.durationInDays > 0) {
+        expiryDate.setDate(now.getDate() + plan.durationInDays);
+    } else {
+        expiryDate = null; // For free or non-expiring plans
+    }
+    
     const subscriptionData = {
         ownerId: userId,
         ownerName: ownerName,
-        plan: plan.name,
+        plan: planKey,
         status: 'Active',
         startDate: Timestamp.fromDate(now),
-        expiryDate: Timestamp.fromDate(expiryDate),
+        expiryDate: expiryDate ? Timestamp.fromDate(expiryDate) : null,
         lastPaymentReference: reference,
     };
     
-    // Check if user already has a subscription document
-    const subsQuery = query(collection(db, 'subscriptions'), where('ownerId', '==', userId));
-    const subSnapshot = await getDocs(subsQuery);
-
-    if (subSnapshot.empty) {
-        await addDoc(collection(db, 'subscriptions'), subscriptionData);
-    } else {
-        const subDocRef = subSnapshot.docs[0].ref;
-        await updateDoc(subDocRef, subscriptionData);
-    }
+    // Use the user's UID as the document ID for their subscription
+    const subDocRef = doc(db, 'subscriptions', userId);
+    await setDoc(subDocRef, subscriptionData, { merge: true });
     
     // Update the `plan` field on the owner document for quick access
-    await updateDoc(ownerDocRef, { plan: plan.name, status: 'Active' });
+    await updateDoc(ownerDocRef, { plan: planKey, status: 'Active' });
 
     // Create a notification for the admin
     await createNotification(
@@ -108,19 +122,3 @@ export async function activateSubscription(userId: string, planKey: PlanKey, ref
       plan.name
     );
 }
-
-// Helper to create admin notifications
-async function createNotification(message: string, eventType: string, ownerName?: string, plan?: string) {
-    try {
-        await addDoc(collection(db, 'notifications'), {
-            message,
-            ownerName: ownerName || 'System',
-            plan: plan || 'N/A',
-            eventType,
-            createdAt: serverTimestamp(),
-            read: false
-        });
-    } catch (error) {
-        console.error("Failed to create notification:", error);
-    }
-};

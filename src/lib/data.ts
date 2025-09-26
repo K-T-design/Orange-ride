@@ -1,6 +1,7 @@
 
 import type { Ride } from './types';
 import { Timestamp } from 'firebase/firestore';
+import type { PlanKey } from "./types";
 
 const NIGERIAN_CITIES = [
   'Lagos',
@@ -28,17 +29,63 @@ const NIGERIAN_CITIES = [
 const vehicleTypes = ['Car', 'Bus', 'Keke', 'Bike', 'VIP'];
 
 const planLimits = {
-  'None': 0,
-  'Weekly': 9,
+  'None': 1,
+  'Weekly': 5,
   'Monthly': 50,
   'Yearly': Infinity,
 };
 
-const plans = {
-  None: { name: 'No Plan', price: 0, listings: 0, features: ['Cannot add listings'], cta: 'Choose a Plan', code: '' },
-  Weekly: { name: 'Weekly', price: 10000, listings: 9, features: ['Up to 9 vehicle listings', 'Basic support'], cta: 'Choose Weekly', code: 'PLN_anv9fhn6m82odm3' },
-  Monthly: { name: 'Monthly', price: 30000, listings: 50, features: ['Up to 50 vehicle listings', 'Priority support', 'Featured listing opportunities'], cta: 'Choose Monthly', code: 'PLN_18l64qb02hgsa97' },
-  Yearly: { name: 'Yearly', price: 120000, listings: Infinity, features: ['Unlimited vehicle listings', '24/7 dedicated support', 'Top placement in search'], cta: 'Choose Yearly', code: 'PLN_jfewzb4ui7qhm9g' },
+export const plans: Record<
+  PlanKey,
+  {
+    name: string;
+    price: number;
+    listings: number | 'Unlimited';
+    features: string[];
+    cta: string;
+    durationInDays: number;
+  }
+> = {
+  None: {
+    name: "Free",
+    price: 0,
+    listings: 1,
+    features: ["1 free vehicle listing", "Basic support"],
+    cta: "Choose Free",
+    durationInDays: 0, // free plan never expires
+  },
+  Weekly: {
+    name: "Weekly Plan",
+    price: 2000,
+    listings: 5,
+    features: ["Up to 5 vehicle listings", "Basic support"],
+    cta: "Choose Weekly",
+    durationInDays: 7,
+  },
+  Monthly: {
+    name: "Monthly Plan",
+    price: 5000,
+    listings: 50,
+    features: [
+      "Up to 50 vehicle listings",
+      "Priority support",
+      "Featured listing opportunities",
+    ],
+    cta: "Choose Monthly",
+    durationInDays: 30,
+  },
+  Yearly: {
+    name: "Yearly Plan",
+    price: 50000,
+    listings: 'Unlimited',
+    features: [
+      "Unlimited vehicle listings",
+      "24/7 dedicated support",
+      "Top placement in search",
+    ],
+    cta: "Choose Yearly",
+    durationInDays: 365,
+  },
 };
 
 
@@ -314,4 +361,4 @@ export const seedableFaqs = [
   { id: 'FAQ08', question: 'Is my personal information safe?', answer: 'Yes, we take data privacy seriously. Your personal information is stored securely and is only shared with ride owners when you initiate contact. Please see our Privacy Policy for more details.', category: 'Customer', isActive: true, createdAt: Timestamp.now() },
 ];
 
-export { NIGERIAN_CITIES, vehicleTypes, planLimits, plans };
+export { NIGERIAN_CITIES, vehicleTypes, planLimits };

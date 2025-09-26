@@ -1,182 +1,132 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { usePaystackPayment, PaystackProps } from 'react-paystack';
+import { loadPaystackScript } from "@paystack/inline-js";
+import { doc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, Loader2, Calendar } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 import { plans } from '@/lib/data';
-import { Timestamp } from 'firebase/firestore';
-import { format } from 'date-fns';
 import type { PlanKey } from '@/lib/types';
-import { verifyPayment } from '@/lib/paystack';
+import { cn } from '@/lib/utils';
 
-type SubscriptionInfo = {
+interface Subscription {
   plan: PlanKey;
-  status: 'Active' | 'Expired' | 'Suspended' | 'None';
-  expiryDate: Date | null;
-};
-
-// 1. Create a dedicated button component for Paystack
-const PaystackButton = ({
-  planKey,
-  user,
-  isCurrent,
-  isProcessing,
-  onClick,
-  onSuccess,
-  onClose,
-}: {
-  planKey: PlanKey;
-  user: any;
-  isCurrent: boolean;
-  isProcessing: boolean;
-  onClick: () => void;
-  onSuccess: (transaction: { reference: string }) => void;
-  onClose: () => void;
-}) => {
-  const planDetails = plans[planKey];
-
-  const config: PaystackProps = {
-    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
-    email: user.email,
-    amount: planDetails.price * 100,
-    reference: new Date().getTime().toString(),
-    metadata: {
-      user_id: user.uid,
-      plan: planKey,
-    },
-  };
-
-  const initializePayment = usePaystackPayment(config);
-
-  return (
-    <Button
-      className="w-full"
-      disabled={isCurrent || isProcessing}
-      onClick={() => {
-        onClick();
-        initializePayment(onSuccess, onClose);
-      }}
-    >
-      {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-      {isCurrent ? 'Current Plan' : planDetails.cta}
-    </Button>
-  );
-};
-
+  status: string;
+  expiryDate?: { seconds: number; nanoseconds: number };
+}
 
 export default function SubscriptionPage() {
   const [user, loadingAuth] = useAuthState(auth);
-  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
-  const [listingCount, setListingCount] = useState(0);
+  const [activePlan, setActivePlan] = useState<PlanKey>("None");
   const [isLoading, setIsLoading] = useState(true);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<PlanKey | null>(null);
-  const [isClient, setIsClient] = useState(false);
-
   const { toast } = useToast();
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  useEffect(() => {
     if (user) {
-      const subsQuery = query(collection(db, 'subscriptions'), where('ownerId', '==', user.uid));
-      const unsubSubs = onSnapshot(subsQuery, (snapshot) => {
-        if (!snapshot.empty) {
-          const subData = snapshot.docs[0].data();
-          setSubscription({
-            plan: subData.plan as PlanKey || 'None',
-            status: subData.status,
-            expiryDate: subData.expiryDate ? subData.expiryDate.toDate() : null
-          });
+      const unsub = onSnapshot(doc(db, "subscriptions", user.uid), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data() as Subscription;
+          // Check if subscription is expired
+          if (data.expiryDate && new Date(data.expiryDate.seconds * 1000) < new Date()) {
+             setActivePlan("None"); // Treat as expired
+          } else {
+             setActivePlan(data.plan);
+          }
         } else {
-          setSubscription({ plan: 'None', status: 'None', expiryDate: null });
+          setActivePlan("None");
         }
         setIsLoading(false);
       });
-
-      const listingsQuery = query(collection(db, 'listings'), where('ownerId', '==', user.uid));
-      const unsubListings = onSnapshot(listingsQuery, (snapshot) => {
-        setListingCount(snapshot.size);
-      });
-
-      return () => {
-        unsubSubs();
-        unsubListings();
-      };
+      return () => unsub();
     } else if (!loadingAuth) {
       setIsLoading(false);
     }
   }, [user, loadingAuth]);
-  
-  const onSuccess = async (transaction: { reference: string }) => {
-    toast({
-      title: "Processing Verification...",
-      description: "Please wait while we confirm your payment.",
-    });
-    
-    try {
-      const result = await verifyPayment(transaction.reference);
 
-      if (result.status === 'success') {
-          toast({
-              title: "Payment Verified!",
-              description: "Your subscription has been activated.",
-          });
-      } else {
-           toast({
-              variant: 'destructive',
-              title: "Verification Failed",
-              description: result.message || "We could not confirm your payment with Paystack.",
-          });
+  const handleSelectPlan = async (planKey: PlanKey) => {
+    if (!user || !user.email) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: "You must be logged in to select a plan.",
+      });
+      return;
+    }
+    
+    const plan = plans[planKey];
+
+    if (plan.price === 0) {
+      try {
+        await setDoc(
+          doc(db, "subscriptions", user.uid),
+          {
+            ownerId: user.uid,
+            plan: planKey,
+            status: "Active",
+            expiryDate: null,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+        toast({ title: "Free plan activated!" });
+      } catch (error) {
+        console.error("Error activating free plan: ", error);
+        toast({ variant: "destructive", title: "Could not activate free plan." });
       }
+      return;
+    }
+
+    try {
+      const paystack = await loadPaystackScript();
+
+      paystack.setup({
+        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
+        email: user.email,
+        amount: plan.price * 100, // kobo
+        currency: "NGN",
+        callback: async () => {
+          const expiryDate = new Date(
+            Date.now() + plan.durationInDays * 24 * 60 * 60 * 1000
+          );
+
+          await setDoc(
+            doc(db, "subscriptions", user.uid),
+            {
+              ownerId: user.uid,
+              plan: planKey,
+              status: "Active",
+              expiryDate,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+          toast({ title: "Payment successful!", description: `Your ${plan.name} is now active.` });
+        },
+        onClose: () => {
+          toast({ variant: "destructive", title: "Payment cancelled." });
+        },
+      });
     } catch (error) {
-       toast({
-            variant: 'destructive',
-            title: "Verification Error",
-            description: "An unexpected error occurred while verifying your payment.",
-        });
-    } finally {
-        setIsProcessingPayment(false);
-        setSelectedPlan(null);
+        console.error("Paystack Error: ", error);
+        toast({ variant: "destructive", title: "Payment Gateway Error", description: "Could not load the payment gateway. Please check your connection and try again." });
     }
   };
-
-  const onClose = () => {
-    setIsProcessingPayment(false);
-    setSelectedPlan(null);
-    toast({
-        variant: 'destructive',
-        title: 'Payment Modal Closed',
-        description: 'The payment process was not completed.',
-    });
-  };
-
-  const currentPlanKey = subscription?.plan || 'None';
-  const currentPlanDetails = plans[currentPlanKey];
-  const usagePercentage = currentPlanDetails.listings > 0 && currentPlanDetails.listings !== Infinity 
-    ? (listingCount / currentPlanDetails.listings) * 100 
-    : 0;
 
   if (isLoading || loadingAuth) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-1/3" />
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Skeleton className="h-80 w-full" />
-            <Skeleton className="h-80 w-full" />
-            <Skeleton className="h-80 w-full" />
+            <Skeleton className="h-96 w-full" />
+            <Skeleton className="h-96 w-full" />
+            <Skeleton className="h-96 w-full" />
         </div>
       </div>
     );
@@ -188,96 +138,55 @@ export default function SubscriptionPage() {
         <h1 className="text-3xl font-bold font-headline">Subscription & Billing</h1>
         <p className="text-muted-foreground">Manage your plan to add more vehicle listings.</p>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Current Plan</CardTitle>
-          <CardDescription>This is your active subscription and usage.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-muted/50 rounded-lg gap-4">
-                <div>
-                    <Badge variant={currentPlanKey === 'None' ? 'destructive' : 'default'} className="text-lg">
-                        {currentPlanDetails.name}
-                    </Badge>
-                    <p className="text-muted-foreground mt-1 text-sm">
-                        {currentPlanKey === 'None' ? 'Upgrade to add listings.' : `You can add up to ${currentPlanDetails.listings === Infinity ? 'unlimited' : currentPlanDetails.listings} listings.`}
-                    </p>
-                </div>
-                 <div className="text-left sm:text-right">
-                    <p className="text-2xl font-bold">{listingCount} <span className="text-base font-normal text-muted-foreground">/ {currentPlanDetails.listings === Infinity ? '∞' : currentPlanDetails.listings}</span></p>
-                    <p className="text-sm text-muted-foreground">Listings Used</p>
-                </div>
-                {subscription?.expiryDate && (
-                    <div className="text-left sm:text-right">
-                        <div className="flex items-center gap-2 font-semibold">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                             <span>Expires on</span>
-                        </div>
-                        {isClient ? (
-                            <p className="text-sm text-muted-foreground">{format(subscription.expiryDate, 'PPP')}</p>
-                        ) : (
-                            <Skeleton className="h-5 w-24 mt-1" />
-                        )}
-                    </div>
-                )}
-            </div>
-            {currentPlanKey !== 'None' && currentPlanDetails.listings !== Infinity && (
-                <div>
-                    <Progress value={usagePercentage} className="w-full" />
-                    <p className="text-xs text-muted-foreground text-right mt-1">{usagePercentage.toFixed(0)}% of limit used</p>
-                </div>
-            )}
-        </CardContent>
-      </Card>
       
-      <div className="space-y-4">
-        <h2 className="text-2xl font-bold font-headline text-center">Choose Your Plan</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(Object.keys(plans) as PlanKey[]).filter((key) => key !== 'None').map((planKey) => {
-                const plan = plans[planKey];
-                const isCurrent = currentPlanKey === planKey;
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {Object.entries(plans).map(([key, plan]) => {
+            const planKey = key as PlanKey;
+            const isActive = activePlan === planKey;
 
-                return (
-                    <Card key={planKey} className={`flex flex-col ${isCurrent ? 'border-primary border-2' : ''}`}>
-                        <CardHeader className="text-center">
-                            <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                            <p className="text-3xl font-bold">₦{plan.price.toLocaleString()}<span className="text-sm font-normal text-muted-foreground">/{planKey === 'Weekly' ? 'wk' : planKey === 'Monthly' ? 'mo' : 'yr'}</span></p>
-                        </CardHeader>
-                        <CardContent className="flex-grow space-y-4">
-                           <div className="text-center">
-                                <p className="font-semibold text-primary">{plan.listings === Infinity ? 'Unlimited' : `Up to ${plan.listings}`} Listings</p>
-                           </div>
-                           <ul className="space-y-2 text-sm text-muted-foreground">
-                            {plan.features.map(feature => (
-                                <li key={feature} className="flex items-start gap-2">
-                                    <CheckCircle className="h-4 w-4 mt-0.5 text-green-500 flex-shrink-0"/>
-                                    <span>{feature}</span>
-                                </li>
-                            ))}
-                           </ul>
-                        </CardContent>
-                        <CardFooter>
-                           {user && (
-                              <PaystackButton
-                                planKey={planKey}
-                                user={user}
-                                isCurrent={isCurrent}
-                                isProcessing={isProcessingPayment && selectedPlan === planKey}
-                                onClick={() => {
-                                  setIsProcessingPayment(true);
-                                  setSelectedPlan(planKey);
-                                }}
-                                onSuccess={onSuccess}
-                                onClose={onClose}
-                              />
-                           )}
-                        </CardFooter>
-                    </Card>
-                )
-            })}
-        </div>
-      </div>
+            return (
+                <Card key={planKey} className={cn("flex flex-col", isActive ? "border-green-500 border-2" : "")}>
+                    <CardHeader className="text-center">
+                        <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                        <p className="text-3xl font-bold">
+                            {plan.price === 0 ? "Free" : `₦${plan.price.toLocaleString()}`}
+                        </p>
+                    </CardHeader>
+                    <CardContent className="flex-grow space-y-4">
+                       <div className="text-center">
+                            <p className="font-semibold text-primary">
+                                {plan.listings === 'Unlimited' ? 'Unlimited' : `Up to ${plan.listings}`} Listings
+                            </p>
+                       </div>
+                       <ul className="space-y-2 text-sm text-muted-foreground">
+                        {plan.features.map(feature => (
+                            <li key={feature} className="flex items-start gap-2">
+                                <CheckCircle className="h-4 w-4 mt-0.5 text-green-500 flex-shrink-0"/>
+                                <span>{feature}</span>
+                            </li>
+                        ))}
+                       </ul>
+                    </CardContent>
+                    <CardFooter>
+                       <Button
+                          onClick={() => handleSelectPlan(planKey)}
+                          disabled={isActive}
+                          className={cn("w-full", isActive && "bg-green-500 hover:bg-green-600 cursor-not-allowed")}
+                        >
+                          {isActive ? (
+                            <>
+                              <CheckCircle className="mr-2 h-5 w-5" />
+                              Subscribed
+                            </>
+                          ) : (
+                            plan.cta
+                          )}
+                        </Button>
+                    </CardFooter>
+                </Card>
+            )
+        })}
+    </div>
 
     </div>
   );
