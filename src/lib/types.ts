@@ -1,5 +1,8 @@
 
 import type { Timestamp } from 'firebase/firestore';
+import { plans } from './data';
+
+export type PlanKey = keyof typeof plans;
 
 export type Ride = {
   id: string;
