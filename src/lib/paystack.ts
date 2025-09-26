@@ -1,4 +1,3 @@
-
 'use server';
 
 import { doc, getDoc, updateDoc, addDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
@@ -6,6 +5,8 @@ import { db } from '@/lib/firebase';
 import { plans } from '@/lib/data';
 import type { PlanKey } from '@/lib/types';
 import { headers } from 'next/headers';
+import * as crypto from 'crypto';
+
 
 /**
  * Initializes a one-time payment transaction with Paystack.
@@ -25,8 +26,8 @@ export async function initializePayment(planKey: PlanKey, userId: string, userEm
     
     const host = headers().get('host');
     const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-    const callback_url = `${protocol}://${host}/owner/subscriptions/verify`;
-
+    // Redirect to a simple confirmation page. Verification will be handled by webhook.
+    const callback_url = `${protocol}://${host}/payment-complete`;
 
     const payload = {
         email: userEmail,
@@ -52,7 +53,7 @@ export async function initializePayment(planKey: PlanKey, userId: string, userEm
 
         if (!response.ok || !data.status) {
             console.error('Paystack API Error:', data);
-            throw new Error(data.message || 'Failed to initialize payment.');
+            return { success: false, message: data.message || 'Failed to initialize payment.' };
         }
 
         return {
@@ -93,7 +94,7 @@ type PaystackVerifyResponse = {
 
 
 /**
- * Verifies a payment transaction with Paystack.
+ * Verifies a payment transaction with Paystack using a reference.
  * @param reference The transaction reference from Paystack.
  * @returns An object containing the status and data of the verification.
  */
@@ -125,7 +126,6 @@ export async function verifyPayment(reference: string) {
              return { success: false, message: 'Paid amount does not match plan price.', data: data.data };
         }
 
-
         // If successful, activate the subscription
         const activationResult = await activateSubscription(data.data.metadata.user_id, data.data.metadata.plan);
         if (!activationResult.success) {
@@ -146,7 +146,7 @@ export async function verifyPayment(reference: string) {
  * @param userId The ID of the user.
  * @param planKey The key of the new plan.
  */
-async function activateSubscription(userId: string, planKey: PlanKey) {
+export async function activateSubscription(userId: string, planKey: PlanKey) {
     if (!userId || !planKey) {
         return { success: false, message: 'User ID or Plan Key missing.' };
     }
