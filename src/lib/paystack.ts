@@ -46,7 +46,7 @@ export async function initializePaymentRedirect(email: string, planKey: PlanKey,
   const url = "https://api.paystack.co/transaction/initialize";
   const fields = {
     email,
-    amount: plan.price * 100, // amount in kobo
+    plan: plan.planCode, // Use the plan code
     callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/owner/payment/callback`,
     metadata: {
         user_id: userId,
@@ -104,7 +104,7 @@ export async function verifyPayment(reference: string) {
       const planKey = data.data.metadata.plan as PlanKey;
       const userId = data.data.metadata.user_id;
 
-      // Security check: Verify amount paid matches the plan
+      // Security check: Verify amount paid matches the plan price
       const planDetails = plans[planKey];
       const amountPaid = data.data.amount; // in kobo
 
@@ -178,5 +178,3 @@ export async function activateSubscription(userId: string, planKey: PlanKey, ref
       plan.name
     );
 }
-
-    
