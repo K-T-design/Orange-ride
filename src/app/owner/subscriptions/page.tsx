@@ -4,8 +4,8 @@
 import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import loadPaystackScript from "@paystack/inline-js";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, Timestamp } from "firebase/firestore";
+import { useRouter } from 'next/navigation';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,27 +15,17 @@ import { CheckCircle, Loader2 } from 'lucide-react';
 import { plans } from '@/lib/data';
 import type { PlanKey } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { verifyPayment } from '@/lib/paystack';
-
+import { initializePaymentRedirect } from '@/lib/paystack';
 
 interface Subscription {
   plan: PlanKey;
   status: string;
-  expiryDate?: { seconds: number; nanoseconds: number };
-}
-
-declare global {
-    interface Window {
-        PaystackPop: {
-            setup(options: any): {
-                openIframe(): void;
-            };
-        };
-    }
+  expiryDate?: Timestamp;
 }
 
 export default function SubscriptionPage() {
   const [user, loadingAuth] = useAuthState(auth);
+  const router = useRouter();
   const [activePlan, setActivePlan] = useState<PlanKey | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState<PlanKey | null>(null);
@@ -75,39 +65,23 @@ export default function SubscriptionPage() {
       return;
     }
     
-    const plan = plans[planKey];
     setIsProcessing(planKey);
 
     try {
-      await loadPaystackScript();
+      const result = await initializePaymentRedirect(user.email, planKey);
       
-      const paystack = window.PaystackPop.setup({
-        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
-        email: user.email,
-        plan: plan.planCode, // Use Plan Code
-        metadata: {
-            user_id: user.uid,
-            plan: planKey,
-        },
-        callback: async (response: any) => {
-           toast({ title: "Payment Completed!", description: "Verifying and activating your subscription..." });
-           const verificationResult = await verifyPayment(response.reference);
-           if (verificationResult.status === 'success') {
-               toast({ title: "Payment Verified!", description: `Your ${plan.name} is now active.` });
-           } else {
-               toast({ variant: 'destructive', title: 'Payment Verification Failed', description: verificationResult.message });
-           }
-           setIsProcessing(null);
-        },
-        onClose: () => {
-          toast({ variant: "destructive", title: "Payment window closed." });
-          setIsProcessing(null);
-        },
-      });
-      paystack.openIframe();
-    } catch (error) {
-        console.error("Paystack Error: ", error);
-        toast({ variant: "destructive", title: "Payment Gateway Error", description: "Could not load the payment gateway. Please check your connection and try again." });
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      if (result.authorization_url) {
+        // Redirect user to Paystack's payment page
+        router.push(result.authorization_url);
+      }
+
+    } catch (error: any) {
+        console.error("Payment Initialization Error: ", error);
+        toast({ variant: "destructive", title: "Payment Error", description: error.message || "Could not initiate the payment. Please try again." });
         setIsProcessing(null);
     }
   };

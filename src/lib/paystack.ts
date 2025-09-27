@@ -4,7 +4,7 @@
 import { plans } from '@/lib/data';
 import type { PlanKey } from '@/lib/types';
 import { db } from './firebase';
-import { collection, query, where, getDocs, doc, setDoc, updateDoc, Timestamp, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, Timestamp, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 
 
 // Helper to create admin notifications
@@ -22,6 +22,57 @@ async function createNotification(message: string, eventType: string, ownerName?
         console.error("Failed to create notification:", error);
     }
 };
+
+/**
+ * Initializes a payment transaction with Paystack and returns a redirect URL.
+ * This should be called from the client to start the payment process.
+ * @param email The user's email.
+ * @param planKey The selected plan key.
+ * @returns An object with the authorization_url or an error.
+ */
+export async function initializePaymentRedirect(email: string, planKey: PlanKey) {
+  const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+  if (!PAYSTACK_SECRET_KEY) {
+    console.error('Paystack secret key is not configured.');
+    return { error: 'Payment gateway is not configured.' };
+  }
+
+  const plan = plans[planKey];
+  if (!plan) {
+    return { error: 'Invalid plan selected.' };
+  }
+
+  const url = "https://api.paystack.co/transaction/initialize";
+  const fields = {
+    email,
+    plan: plan.planCode,
+    callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/owner/payment/callback`,
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(fields),
+    });
+
+    const data = await response.json();
+
+    if (!data.status || !data.data.authorization_url) {
+      console.error('Paystack initialization failed:', data.message);
+      return { error: data.message || 'Failed to initialize payment with Paystack.' };
+    }
+
+    return { authorization_url: data.data.authorization_url };
+  } catch (error) {
+    console.error('Error initializing Paystack payment:', error);
+    return { error: 'An unexpected error occurred while initializing payment.' };
+  }
+}
+
 
 /**
  * Verifies a Paystack transaction.
