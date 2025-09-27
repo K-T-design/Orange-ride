@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -70,14 +69,12 @@ export default function SubscriptionPage() {
     try {
       const result = await initializePaymentRedirect(user.email, planKey, user.uid);
       
-      if (result.error) {
-        throw new Error(result.error);
+      if (result.error || !result.authorization_url) {
+        throw new Error(result.error || "Authorization URL was not returned.");
       }
 
-      if (result.authorization_url) {
-        // Redirect user to Paystack's payment page
-        router.push(result.authorization_url);
-      }
+      // Redirect user to Paystack's payment page
+      router.push(result.authorization_url);
 
     } catch (error: any) {
         console.error("Payment Initialization Error: ", error);
@@ -108,7 +105,7 @@ export default function SubscriptionPage() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {(Object.keys(plans) as PlanKey[]).map((key) => {
-            const planKey = key;
+            const planKey = key as PlanKey;
             const plan = plans[planKey];
             const isActive = activePlan === planKey;
 
