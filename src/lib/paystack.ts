@@ -94,7 +94,7 @@ export async function activateSubscription(userId: string, planKey: PlanKey, ref
     if (plan.durationInDays > 0) {
         expiryDate.setDate(now.getDate() + plan.durationInDays);
     } else {
-        expiryDate = null; // For free or non-expiring plans
+        expiryDate = null; // For non-expiring plans
     }
     
     const subscriptionData = {
@@ -122,3 +122,5 @@ export async function activateSubscription(userId: string, planKey: PlanKey, ref
       plan.name
     );
 }
+
+    

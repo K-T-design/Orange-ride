@@ -26,3 +26,5 @@ export type Ride = {
   capacity?: number;
   description?: string;
 };
+
+    

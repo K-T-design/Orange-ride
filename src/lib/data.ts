@@ -29,7 +29,6 @@ const NIGERIAN_CITIES = [
 const vehicleTypes = ['Car', 'Bus', 'Keke', 'Bike', 'VIP'];
 
 const planLimits = {
-  'None': 1,
   'Weekly': 9,
   'Monthly': 50,
   'Yearly': Infinity,
@@ -44,16 +43,9 @@ export const plans: Record<
     features: string[];
     cta: string;
     durationInDays: number;
+    planCode: string;
   }
 > = {
-  None: {
-    name: "Free",
-    price: 0,
-    listings: 1,
-    features: ["1 free vehicle listing", "Basic support"],
-    cta: "Choose Free",
-    durationInDays: 0, // free plan never expires
-  },
   Weekly: {
     name: "Weekly Plan",
     price: 10000,
@@ -61,6 +53,7 @@ export const plans: Record<
     features: ["Up to 9 vehicle listings", "Basic support"],
     cta: "Choose Weekly",
     durationInDays: 7,
+    planCode: "PLN_anv9fhn6m82odm3",
   },
   Monthly: {
     name: "Monthly Plan",
@@ -73,6 +66,7 @@ export const plans: Record<
     ],
     cta: "Choose Monthly",
     durationInDays: 30,
+    planCode: "PLN_18l64qb02hgsa97",
   },
   Yearly: {
     name: "Yearly Plan",
@@ -85,6 +79,7 @@ export const plans: Record<
     ],
     cta: "Choose Yearly",
     durationInDays: 365,
+    planCode: "PLN_jfewzb4ui7qhm9g",
   },
 };
 
@@ -362,3 +357,5 @@ export const seedableFaqs = [
 ];
 
 export { NIGERIAN_CITIES, vehicleTypes, planLimits };
+
+    

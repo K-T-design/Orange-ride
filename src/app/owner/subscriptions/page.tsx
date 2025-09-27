@@ -15,6 +15,8 @@ import { CheckCircle } from 'lucide-react';
 import { plans } from '@/lib/data';
 import type { PlanKey } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { verifyPayment } from '@/lib/paystack';
+
 
 interface Subscription {
   plan: PlanKey;
@@ -34,7 +36,7 @@ declare global {
 
 export default function SubscriptionPage() {
   const [user, loadingAuth] = useAuthState(auth);
-  const [activePlan, setActivePlan] = useState<PlanKey>("None");
+  const [activePlan, setActivePlan] = useState<PlanKey | "None">("None");
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -72,51 +74,20 @@ export default function SubscriptionPage() {
     
     const plan = plans[planKey];
 
-    if (plan.price === 0) {
-      try {
-        await setDoc(
-          doc(db, "subscriptions", user.uid),
-          {
-            ownerId: user.uid,
-            plan: planKey,
-            status: "Active",
-            expiryDate: null,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-        toast({ title: "Free plan activated!" });
-      } catch (error) {
-        console.error("Error activating free plan: ", error);
-        toast({ variant: "destructive", title: "Could not activate free plan." });
-      }
-      return;
-    }
-
     try {
       await loadPaystackScript();
       const paystack = window.PaystackPop.setup({
         key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
         email: user.email,
-        amount: plan.price * 100, // kobo
+        plan: plan.planCode, // Use Plan Code
         currency: "NGN",
-        callback: async () => {
-          const expiryDate = new Date(
-            Date.now() + plan.durationInDays * 24 * 60 * 60 * 1000
-          );
-
-          await setDoc(
-            doc(db, "subscriptions", user.uid),
-            {
-              ownerId: user.uid,
-              plan: planKey,
-              status: "Active",
-              expiryDate,
-              updatedAt: serverTimestamp(),
-            },
-            { merge: true }
-          );
-          toast({ title: "Payment successful!", description: `Your ${plan.name} is now active.` });
+        callback: async (response: any) => {
+           const verificationResult = await verifyPayment(response.reference);
+           if (verificationResult.status === 'success') {
+               toast({ title: "Payment successful!", description: `Your ${plan.name} is now active.` });
+           } else {
+               toast({ variant: 'destructive', title: 'Payment Verification Failed', description: verificationResult.message });
+           }
         },
         onClose: () => {
           toast({ variant: "destructive", title: "Payment cancelled." });
@@ -149,7 +120,7 @@ export default function SubscriptionPage() {
         <p className="text-muted-foreground">Manage your plan to add more vehicle listings.</p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {Object.entries(plans).map(([key, plan]) => {
             const planKey = key as PlanKey;
             const isActive = activePlan === planKey;
@@ -159,13 +130,13 @@ export default function SubscriptionPage() {
                     <CardHeader className="text-center">
                         <CardTitle className="text-2xl">{plan.name}</CardTitle>
                         <p className="text-3xl font-bold">
-                            {plan.price === 0 ? "Free" : `₦${plan.price.toLocaleString()}`}
+                            ₦{plan.price.toLocaleString()}
                         </p>
                     </CardHeader>
                     <CardContent className="flex-grow space-y-4">
                        <div className="text-center">
                             <p className="font-semibold text-primary">
-                                {plan.listings === 'Unlimited' ? 'Unlimited' : `Up to ${plan.listings}`} Listings
+                                {plan.listings === Infinity ? 'Unlimited' : `Up to ${plan.listings}`} Listings
                             </p>
                        </div>
                        <ul className="space-y-2 text-sm text-muted-foreground">
@@ -201,3 +172,5 @@ export default function SubscriptionPage() {
     </div>
   );
 }
+
+    
