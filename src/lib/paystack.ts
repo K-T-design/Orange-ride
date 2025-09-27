@@ -28,9 +28,10 @@ async function createNotification(message: string, eventType: string, ownerName?
  * This should be called from the client to start the payment process.
  * @param email The user's email.
  * @param planKey The selected plan key.
+ * @param userId The ID of the user initiating the payment.
  * @returns An object with the authorization_url or an error.
  */
-export async function initializePaymentRedirect(email: string, planKey: PlanKey) {
+export async function initializePaymentRedirect(email: string, planKey: PlanKey, userId: string) {
   const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
   if (!PAYSTACK_SECRET_KEY) {
     console.error('Paystack secret key is not configured.');
@@ -45,8 +46,12 @@ export async function initializePaymentRedirect(email: string, planKey: PlanKey)
   const url = "https://api.paystack.co/transaction/initialize";
   const fields = {
     email,
-    plan: plan.planCode,
+    amount: plan.price * 100, // amount in kobo
     callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/owner/payment/callback`,
+    metadata: {
+        user_id: userId,
+        plan: planKey,
+    }
   };
 
   try {

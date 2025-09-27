@@ -68,7 +68,7 @@ export default function SubscriptionPage() {
     setIsProcessing(planKey);
 
     try {
-      const result = await initializePaymentRedirect(user.email, planKey);
+      const result = await initializePaymentRedirect(user.email, planKey, user.uid);
       
       if (result.error) {
         throw new Error(result.error);
