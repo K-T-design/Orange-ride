@@ -44,10 +44,14 @@ export async function initializePaymentRedirect(email: string, planKey: PlanKey,
   }
 
   const url = "https://api.paystack.co/transaction/initialize";
+  
+  // Construct the callback URL from environment variables
+  const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/owner/payment/callback`;
+
   const fields = {
     email,
-    plan: plan.planCode, // Use the plan code
-    callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/owner/payment/callback`,
+    plan: plan.planCode, // Use the plan code for subscriptions
+    callback_url: callbackUrl,
     metadata: {
         user_id: userId,
         plan: planKey,
@@ -104,10 +108,18 @@ export async function verifyPayment(reference: string) {
       const planKey = data.data.metadata.plan as PlanKey;
       const userId = data.data.metadata.user_id;
 
-      // Security check: Verify amount paid matches the plan price
+      if (!userId || !planKey) {
+        await createNotification(
+            `Payment verification failed. Missing metadata for reference: ${reference}`,
+            'payment_failed',
+        );
+        return { status: 'error', message: 'Transaction metadata is missing.' };
+      }
+      
       const planDetails = plans[planKey];
       const amountPaid = data.data.amount; // in kobo
 
+      // Security check: Verify amount paid matches the plan price
       if (planDetails.price * 100 !== amountPaid) {
           await createNotification(
             `Payment verification failed for ${userId}. Amount mismatch.`,
@@ -150,7 +162,7 @@ export async function activateSubscription(userId: string, planKey: PlanKey, ref
     if (plan.durationInDays > 0) {
         expiryDate.setDate(now.getDate() + plan.durationInDays);
     } else {
-        expiryDate = null; // For non-expiring plans
+        expiryDate = null; // For non-expiring plans like lifetime deals
     }
     
     const subscriptionData = {
@@ -163,7 +175,7 @@ export async function activateSubscription(userId: string, planKey: PlanKey, ref
         lastPaymentReference: reference,
     };
     
-    // Use the user's UID as the document ID for their subscription
+    // Use the user's UID as the document ID for their subscription for easy lookup
     const subDocRef = doc(db, 'subscriptions', userId);
     await setDoc(subDocRef, subscriptionData, { merge: true });
     
