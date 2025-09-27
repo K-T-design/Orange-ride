@@ -42,6 +42,9 @@ export async function initializePaymentRedirect(email: string, planKey: PlanKey,
   if (!plan) {
     return { error: 'Invalid plan selected.' };
   }
+   if (!userId) {
+    return { error: 'User is not authenticated.' };
+  }
 
   const url = "https://api.paystack.co/transaction/initialize";
   
@@ -88,7 +91,7 @@ export async function initializePaymentRedirect(email: string, planKey: PlanKey,
  * @param reference The transaction reference.
  * @returns An object indicating success or failure.
  */
-export async function verifyPayment(reference: string) {
+export async function verifyPayment(reference: string): Promise<{status: 'success' | 'error', message: string, plan?: PlanKey}> {
   const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
   if (!PAYSTACK_SECRET_KEY) {
     console.error('Paystack secret key is not configured.');
@@ -129,7 +132,7 @@ export async function verifyPayment(reference: string) {
       }
 
       await activateSubscription(userId, planKey, reference);
-      return { status: 'success', message: 'Payment verified and subscription activated.' };
+      return { status: 'success', message: 'Payment verified and subscription activated.', plan: planKey };
     } else {
       return { status: 'error', message: `Payment not successful. Status: ${data.data.status || 'unknown'}` };
     }

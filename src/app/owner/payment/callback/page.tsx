@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import { PlanKey } from '@/lib/types';
+import { plans } from '@/lib/data';
 
 function PaymentCallback() {
   const searchParams = useSearchParams();
@@ -29,12 +31,13 @@ function PaymentCallback() {
 
     const verify = async () => {
       const result = await verifyPayment(paymentReference);
-      if (result.status === 'success') {
+      if (result.status === 'success' && result.plan) {
         setStatus('success');
-        setMessage(result.message);
+        const planName = plans[result.plan as PlanKey]?.name || 'Your';
+        setMessage(`Your payment was successful and your ${planName} subscription is now active.`);
       } else {
         setStatus('error');
-        setMessage(result.message);
+        setMessage(result.message || 'An unknown error occurred during verification.');
       }
     };
 
