@@ -80,15 +80,11 @@ export default function SubscriptionPage() {
 
     try {
       await loadPaystackScript();
+      
       const paystack = window.PaystackPop.setup({
         key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
         email: user.email,
         plan: plan.planCode, // Use Plan Code
-        currency: "NGN",
-        // The amount is determined by the plan on Paystack's end, 
-        // but it's good practice to include it for non-subscription payments.
-        // For plan-based subscriptions, this amount is often ignored.
-        amount: plan.price * 100, 
         metadata: {
             user_id: user.uid,
             plan: planKey,
