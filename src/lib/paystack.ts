@@ -45,6 +45,10 @@ export async function initializePaymentRedirect(email: string, planKey: PlanKey,
    if (!userId) {
     return { error: 'User is not authenticated.' };
   }
+  if (!plan.price || plan.price <= 0) {
+    return { error: 'Invalid plan price.' };
+  }
+
 
   const url = "https://api.paystack.co/transaction/initialize";
   
@@ -53,7 +57,8 @@ export async function initializePaymentRedirect(email: string, planKey: PlanKey,
 
   const fields = {
     email,
-    plan: plan.planCode, // Use the plan code for subscriptions
+    amount: plan.price * 100, // Amount in kobo
+    plan: plan.planCode, // The plan code for the subscription
     callback_url: callbackUrl,
     metadata: {
         user_id: userId,
