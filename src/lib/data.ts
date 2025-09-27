@@ -28,7 +28,7 @@ const NIGERIAN_CITIES = [
 
 const vehicleTypes = ['Car', 'Bus', 'Keke', 'Bike', 'VIP'];
 
-const planLimits = {
+export const planLimits: { [key in PlanKey]: number } = {
   'Weekly': 9,
   'Monthly': 50,
   'Yearly': Infinity,
@@ -356,6 +356,6 @@ export const seedableFaqs = [
   { id: 'FAQ08', question: 'Is my personal information safe?', answer: 'Yes, we take data privacy seriously. Your personal information is stored securely and is only shared with ride owners when you initiate contact. Please see our Privacy Policy for more details.', category: 'Customer', isActive: true, createdAt: Timestamp.now() },
 ];
 
-export { NIGERIAN_CITIES, vehicleTypes, planLimits };
+export { NIGERIAN_CITIES, vehicleTypes };
 
     

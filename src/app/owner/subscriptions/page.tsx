@@ -5,13 +5,13 @@ import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import loadPaystackScript from "@paystack/inline-js";
-import { doc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Loader2 } from 'lucide-react';
 import { plans } from '@/lib/data';
 import type { PlanKey } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -36,8 +36,9 @@ declare global {
 
 export default function SubscriptionPage() {
   const [user, loadingAuth] = useAuthState(auth);
-  const [activePlan, setActivePlan] = useState<PlanKey | "None">("None");
+  const [activePlan, setActivePlan] = useState<PlanKey | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState<PlanKey | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -46,13 +47,15 @@ export default function SubscriptionPage() {
         if (snap.exists()) {
           const data = snap.data() as Subscription;
           // Check if subscription is expired
-          if (data.expiryDate && new Date(data.expiryDate.seconds * 1000) < new Date()) {
-             setActivePlan("None"); // Treat as expired
-          } else {
+          if (data.status === 'Active' && data.expiryDate && new Date(data.expiryDate.seconds * 1000) < new Date()) {
+             setActivePlan(null); // Treat as expired
+          } else if (data.status === 'Active') {
              setActivePlan(data.plan);
+          } else {
+             setActivePlan(null);
           }
         } else {
-          setActivePlan("None");
+          setActivePlan(null);
         }
         setIsLoading(false);
       });
@@ -73,6 +76,7 @@ export default function SubscriptionPage() {
     }
     
     const plan = plans[planKey];
+    setIsProcessing(planKey);
 
     try {
       await loadPaystackScript();
@@ -81,22 +85,34 @@ export default function SubscriptionPage() {
         email: user.email,
         plan: plan.planCode, // Use Plan Code
         currency: "NGN",
+        // The amount is determined by the plan on Paystack's end, 
+        // but it's good practice to include it for non-subscription payments.
+        // For plan-based subscriptions, this amount is often ignored.
+        amount: plan.price * 100, 
+        metadata: {
+            user_id: user.uid,
+            plan: planKey,
+        },
         callback: async (response: any) => {
+           toast({ title: "Payment Completed!", description: "Verifying and activating your subscription..." });
            const verificationResult = await verifyPayment(response.reference);
            if (verificationResult.status === 'success') {
-               toast({ title: "Payment successful!", description: `Your ${plan.name} is now active.` });
+               toast({ title: "Payment Verified!", description: `Your ${plan.name} is now active.` });
            } else {
                toast({ variant: 'destructive', title: 'Payment Verification Failed', description: verificationResult.message });
            }
+           setIsProcessing(null);
         },
         onClose: () => {
-          toast({ variant: "destructive", title: "Payment cancelled." });
+          toast({ variant: "destructive", title: "Payment window closed." });
+          setIsProcessing(null);
         },
       });
       paystack.openIframe();
     } catch (error) {
         console.error("Paystack Error: ", error);
         toast({ variant: "destructive", title: "Payment Gateway Error", description: "Could not load the payment gateway. Please check your connection and try again." });
+        setIsProcessing(null);
     }
   };
 
@@ -121,8 +137,9 @@ export default function SubscriptionPage() {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Object.entries(plans).map(([key, plan]) => {
-            const planKey = key as PlanKey;
+        {(Object.keys(plans) as PlanKey[]).map((key) => {
+            const planKey = key;
+            const plan = plans[planKey];
             const isActive = activePlan === planKey;
 
             return (
@@ -151,16 +168,17 @@ export default function SubscriptionPage() {
                     <CardFooter>
                        <Button
                           onClick={() => handleSelectPlan(planKey)}
-                          disabled={isActive}
+                          disabled={isActive || !!isProcessing}
                           className={cn("w-full", isActive && "bg-green-500 hover:bg-green-600 cursor-not-allowed")}
                         >
+                          {isProcessing === planKey ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
                           {isActive ? (
                             <>
                               <CheckCircle className="mr-2 h-5 w-5" />
                               Subscribed
                             </>
                           ) : (
-                            plan.cta
+                            isProcessing === planKey ? 'Processing...' : plan.cta
                           )}
                         </Button>
                     </CardFooter>
@@ -172,5 +190,3 @@ export default function SubscriptionPage() {
     </div>
   );
 }
-
-    
