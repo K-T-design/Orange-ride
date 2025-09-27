@@ -28,7 +28,7 @@ const NIGERIAN_CITIES = [
 
 const vehicleTypes = ['Car', 'Bus', 'Keke', 'Bike', 'VIP'];
 
-export const planLimits: { [key in PlanKey]: number } = {
+export const planLimits: { [key in 'Weekly' | 'Monthly' | 'Yearly']: number } = {
   'Weekly': 9,
   'Monthly': 50,
   'Yearly': Infinity,
@@ -357,5 +357,7 @@ export const seedableFaqs = [
 ];
 
 export { NIGERIAN_CITIES, vehicleTypes };
+
+    
 
     
