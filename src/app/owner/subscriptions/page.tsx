@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { loadPaystackScript } from "@paystack/inline-js";
+import loadPaystackScript from "@paystack/inline-js";
 import { doc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
