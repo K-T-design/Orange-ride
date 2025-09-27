@@ -30,7 +30,7 @@ const vehicleTypes = ['Car', 'Bus', 'Keke', 'Bike', 'VIP'];
 
 const planLimits = {
   'None': 1,
-  'Weekly': 5,
+  'Weekly': 9,
   'Monthly': 50,
   'Yearly': Infinity,
 };
@@ -56,15 +56,15 @@ export const plans: Record<
   },
   Weekly: {
     name: "Weekly Plan",
-    price: 2000,
-    listings: 5,
-    features: ["Up to 5 vehicle listings", "Basic support"],
+    price: 10000,
+    listings: 9,
+    features: ["Up to 9 vehicle listings", "Basic support"],
     cta: "Choose Weekly",
     durationInDays: 7,
   },
   Monthly: {
     name: "Monthly Plan",
-    price: 5000,
+    price: 30000,
     listings: 50,
     features: [
       "Up to 50 vehicle listings",
@@ -76,7 +76,7 @@ export const plans: Record<
   },
   Yearly: {
     name: "Yearly Plan",
-    price: 50000,
+    price: 120000,
     listings: 'Unlimited',
     features: [
       "Unlimited vehicle listings",

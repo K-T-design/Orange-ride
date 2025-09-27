@@ -22,6 +22,16 @@ interface Subscription {
   expiryDate?: { seconds: number; nanoseconds: number };
 }
 
+declare global {
+    interface Window {
+        PaystackPop: {
+            setup(options: any): {
+                openIframe(): void;
+            };
+        };
+    }
+}
+
 export default function SubscriptionPage() {
   const [user, loadingAuth] = useAuthState(auth);
   const [activePlan, setActivePlan] = useState<PlanKey>("None");
@@ -84,9 +94,8 @@ export default function SubscriptionPage() {
     }
 
     try {
-      const paystack = await loadPaystackScript();
-
-      paystack.setup({
+      await loadPaystackScript();
+      const paystack = window.PaystackPop.setup({
         key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
         email: user.email,
         amount: plan.price * 100, // kobo
@@ -113,6 +122,7 @@ export default function SubscriptionPage() {
           toast({ variant: "destructive", title: "Payment cancelled." });
         },
       });
+      paystack.openIframe();
     } catch (error) {
         console.error("Paystack Error: ", error);
         toast({ variant: "destructive", title: "Payment Gateway Error", description: "Could not load the payment gateway. Please check your connection and try again." });
