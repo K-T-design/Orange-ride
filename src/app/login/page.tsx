@@ -296,6 +296,8 @@ function SignupForm({ onSuccessfulSignup }: { onSuccessfulSignup: () => void }) 
       password: '',
       confirmPassword: '',
       terms: false,
+      businessName: '',
+      businessType: '',
     },
   });
 
